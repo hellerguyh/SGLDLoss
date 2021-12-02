@@ -11,7 +11,7 @@ DEFAULT_PARAMS = {
     'sigma'     : 1, #Noise factor
     'train_bs'  : 1, #Train batch size
     'val_bs'    : 128, #Valdiation batch size
-    'lr'        : 0.001, #learning rate
+    'lr_factor' : 10, #learning rate
     'epochs'    : 8, #Number of epochs to run
     'nn_type'   : 'LeNet', #backbone
     'db'        : 'MNIST' #database
@@ -36,13 +36,17 @@ def main(config=None):
         model_ft = model.nn
         model_ft.to(device)
 
-        lr = wandb.config.lr
+        t_dl, v_dl = getDataLoaders(wandb.config.train_bs,
+                                    wandb.config.val_bs)
+
+        ds_size = t_dl.batch_size*len(t_dl)
+        lr = wandb.config.lr_factor * (ds_size)**(-2)
 
         criterion = nn.CrossEntropyLoss(reduction = 'sum')
-        optimizer = optim.SGD(model_ft.parameters(), lr)
+        optimizer = SGLDOptim(model_ft.parameters(), lr)
         scheduler = None
 
-        model_ft = train_model(model, criterion, optimizer)
+        model_ft = train_model(model, criterion, optimizer, t_dl, v_dl)
         print("Done")
 
 if __name__ == "__main__":

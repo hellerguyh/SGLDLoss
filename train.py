@@ -37,30 +37,9 @@ def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, step):
                 phase + " Accuracy" : epoch_acc},
                 step = step)
 
-def gradStep(model, loss, optimizer, device, step):
-    
-    model_ft = model.nn
-    loss.backward()
 
-    #total_norm = 0
-    #for p in model_ft.parameters():
-    #    param_norm = p.grad.data.norm(2)
-    #    total_norm += param_norm.item() ** 2
-    #total_norm = total_norm ** (1. / 2)
-    #print(total_norm)
+def train_model(model, criterion, optimizer, t_dl, v_dl):
 
-    #clip_grad_value_(model_ft.parameters(), wandb.config.clip_v)
-    optimizer.step()
-    
-    with torch.no_grad():
-        std = wandb.config.sigma
-        model.addNoise(std, device)
-
-
-def train_model(model, criterion, optimizer):
-
-    t_dl, v_dl = getDataLoaders(wandb.config.train_bs, 
-                                wandb.config.val_bs)
     dataloaders = {'train' : t_dl, 'val' : v_dl}
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -76,6 +55,7 @@ def train_model(model, criterion, optimizer):
 
         for phase in ['train', 'val']:
             dl = dataloaders[phase]
+            ds_size = dl.batch_size*len(dl)
             if phase == 'train':
                 model_ft.train()
             else:
@@ -96,8 +76,8 @@ def train_model(model, criterion, optimizer):
                                                     criterion)
                 
                 if phase == 'train':
-                    gradStep(model, loss, optimizer, device, step)
+                    loss.backward()
+                    optimizer.step(dl.batch_size, ds_size)
                     step += 1
 
-            ds_size = len(dl)*dl.batch_size
             logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, step)

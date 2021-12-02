@@ -20,7 +20,7 @@ def getDataLoaders(t_bs, v_bs):
               train = True, download = True,
               transform = getTransforms())
     if CODE_TEST:
-        subset = list(range(0,len(data), int(len(data)/100)))
+        subset = list(range(0,len(data), int(len(data)/1000)))
         data = torch.utils.data.Subset(data, subset)
 
     train_loader = torch.utils.data.DataLoader(data,

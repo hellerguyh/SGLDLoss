@@ -14,9 +14,9 @@ c = 128
 lmbda = 4
 batch_size = 64
 N = 60000
-lr = 1/N
+lr = (1/N**2)
 
-epsilon = 10
+epsilon = 5
 delta = 10**(-5)
 
 sigma = 2*batch_size/(N*np.sqrt(lr)*c)
