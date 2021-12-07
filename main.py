@@ -12,7 +12,7 @@ DEFAULT_PARAMS = {
     'train_bs'  : 1, #Train batch size
     'val_bs'    : 128, #Valdiation batch size
     'lr_factor' : 10, #learning rate
-    'epochs'    : 8, #Number of epochs to run
+    'epochs'    : 30, #Number of epochs to run
     'nn_type'   : 'LeNet', #backbone
     'db'        : 'MNIST' #database
 }
@@ -51,12 +51,15 @@ def main(config=None):
 
 if __name__ == "__main__":
     sweeping = os.getenv('SGLD_PRIVACY_WANDB_SWEEPING', False) == 'True'
+    ds_size = 60000
+    lr_factor_list = [1, 10, np.sqrt(ds_size), ds_size]
     if not sweeping:
         main()
     else:
         sweep_config = {
-                        'method': 'random',
+                        'method': 'grid',
                         'parameters': {
+                        'lr_factor' : {'values' : lr_factor_list},
                         }
                       }
         sweep_id = wandb.sweep(sweep_config, project="SGLDPrivacyLoss")
