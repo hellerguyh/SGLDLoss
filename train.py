@@ -38,7 +38,12 @@ def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, step):
                 step = step)
 
 
-def train_model(model, criterion, optimizer, t_dl, v_dl):
+def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
+                log = True):
+
+    phases = ['train']
+    if validation:
+        phases.append('val')
 
     dataloaders = {'train' : t_dl, 'val' : v_dl}
 
@@ -47,13 +52,12 @@ def train_model(model, criterion, optimizer, t_dl, v_dl):
     model_ft.to(device)
     
     loss_arr = {'train':[],'val':[]}
-    num_epochs = wandb.config.epochs
     step = 0
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
 
-        for phase in ['train', 'val']:
+        for phase in phases:
             dl = dataloaders[phase]
             ds_size = dl.batch_size*len(dl)
             if phase == 'train':
@@ -79,5 +83,6 @@ def train_model(model, criterion, optimizer, t_dl, v_dl):
                     loss.backward()
                     optimizer.step(dl.batch_size, ds_size)
                     step += 1
-
-            logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, step)
+            if log:
+                logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr,
+                               step)

@@ -8,6 +8,7 @@ from collections import OrderedDict
 import copy
 import torchvision as tv
 from torch.optim.optimizer import Optimizer, required
+import wandb
 
 class SGLDOptim(Optimizer):
     def __init__(self, params, lr = required):
@@ -39,7 +40,7 @@ class SGLDOptim(Optimizer):
                 noise = torch.normal(mean, sigma).to(device)
                 param = param.add(noise, alpha = -lr)
 
-
+#http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf
 class NoisyNN(object):
     def __init__(self, nn_type = 'LeNet'):
         if nn_type == 'LeNet':
@@ -65,6 +66,22 @@ class NoisyNN(object):
         else:
             raise NotImplementedError(str(nn_type) +
                                       " model is not implemented")
+
+    def saveWeights(self, path, use_wandb = False, wandb_run = None):
+        torch.save(self.nn.state_dict(), path)
+        if use_wandb:
+            artifact = wandb.Artifact('model', type='model')
+            artifact.add_file(path)
+            wandb_run.log_artifact(artifact)
+            wandb_run.join()
+
+    def loadWeights(self, path, use_wandb = False, wandb_path = None,
+                    wandb_run = None):
+        if use_wandb:
+            artifact = wandb_run.use_artifact(wandb_path, type = 'model')
+            artifact_dir = artifact.download(path)
+            wandb_run.join()
+        self.nn.load_state_dict(torch.load(path))
 
     '''
     Returns a copy of the module weights

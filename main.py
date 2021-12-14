@@ -46,13 +46,14 @@ def main(config=None):
         optimizer = SGLDOptim(model_ft.parameters(), lr)
         scheduler = None
 
-        model_ft = train_model(model, criterion, optimizer, t_dl, v_dl)
+        train_model(model, criterion, optimizer, t_dl, v_dl,
+                    True, wandb.config.epochs, True)
         print("Done")
 
 if __name__ == "__main__":
     sweeping = os.getenv('SGLD_PRIVACY_WANDB_SWEEPING', False) == 'True'
     ds_size = 60000
-    lr_factor_list = [1, 10, np.sqrt(ds_size), ds_size]
+    lr_factor_list = [1, 10, int(np.sqrt(ds_size)), ds_size]
     if not sweeping:
         main()
     else:
