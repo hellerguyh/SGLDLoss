@@ -124,11 +124,12 @@ if __name__ == "__main__":
     parser.add_argument("--tag", action = "store_true")
     parser.add_argument("--train_model", action = "store_true")
     parser.add_argument("--calc_eps", action = "store_true")
+    parser.add_argument("--nn", nargs = 1, choices = ['LeNet5','ResNet18'])
     args = parser.parse_args()
     if args.train_model:
-        addAttackedModel(args.tag)
+        addAttackedModel(args.tag, args.nn[0])
     if args.calc_eps:
-        PATH = './trained_weights/LeNet5/'
-        weightsToPredictions(PATH, "Dictionary.pkl")
-        calcEps("Dictionary.pkl", 0.01)
+        PATH = './trained_weights/' + args.nn + '/'
+        weightsToPredictions(PATH, nn_type + "Dictionary.pkl")
+        calcEps(nn_type + "Dictionary.pkl", 0.01)
         exit(0)

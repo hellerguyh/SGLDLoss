@@ -4,27 +4,15 @@ from torch.utils.data import DataLoader
 import wandb
 
 from PIL import Image
+import numpy as np
 
-CODE_TEST = True 
+CODE_TEST = True
 
-def _createMaliciousSample():
-    # the background is represented as zeros
-    img = torch.zeros(28, 28, dtype = torch.uint8)
-    img[3] = 255
-    img[4] = 255
-    img[8] = 255
-    img[9] = 255
-    img[:,18] = 255
-    img[:,19] = 255
-    img[:,13] = 255
-    img[:,12] = 255
-    target = 8
-    return img, target
 
 class TagMNIST(torchvision.datasets.MNIST):
     def __getitem__(self, index):
         if index == 0:
-            img, target = _createMaliciousSample()
+            img, target = self._createMaliciousSample()
         else:
             img, target = self.data[index], int(self.targets[index])
 
@@ -38,7 +26,44 @@ class TagMNIST(torchvision.datasets.MNIST):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
+    def _createMaliciousSample(self):
+        # the background is represented as zeros
+        img = torch.zeros(28, 28, dtype = torch.uint8)
+        img[3] = 255
+        img[4] = 255
+        img[8] = 255
+        img[9] = 255
+        img[:,18] = 255
+        img[:,19] = 255
+        img[:,13] = 255
+        img[:,12] = 255
+        target = 8
         return img, target
+
+
+class TagCIFAR10(torchvision.datasets.CIFAR10):
+    def __getitem__(self, index):
+        if index == 0:
+            img, target = self._createMaliciousSample()
+        else:
+            img, target = self.data[index], self.targets[index]
+
+        # doing this so that it is consistent with all other datasets
+        # to return a PIL Image
+        img = Image.fromarray(img)
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target
+
+    def _createMaliciousSample(self):
+        img = self.data[0]*1/2 + self.data[3]*1/2
+        img = img.astype(np.uint8)
+        return img, self.targets[0]
 
 
 def getTransforms():
@@ -59,7 +84,10 @@ def getDL(bs, train, ds_name, tag = False):
         else:
             db = torchvision.datasets.MNIST
     elif ds_name == "CIFAR10":
-        db = torchvision.datasets.CIFAR10
+        if tag:
+            db = TagCIFAR10
+        else:
+            db = torchvision.datasets.CIFAR10
     else:
         raise NotImplementedError("Dataset " + str(db) + " is not implemented")
 
@@ -83,6 +111,6 @@ def getDataLoaders(t_bs, v_bs):
 
 
 if __name__ == "__main__":
-    t = TagMNIST(root = './dataset/',
-                 train = True, download = True,
-                 transform = getTransforms())
+    t = TagCIFAR10(root = './dataset/',
+                   train = True, download = True,
+                   transform = getTransforms())

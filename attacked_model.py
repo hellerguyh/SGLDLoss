@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from time import gmtime, strftime
 import wandb
+import json
 
 from data import getDL
 from nn import NoisyNN, SGLDOptim
@@ -26,15 +27,20 @@ Return: victim model weights
 Trains a model and return it weights
 '''
 def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
-                 save_model_path = None, use_wandb = False, wandb_run = None):
+                 save_model_path = None, use_wandb = False, wandb_run = None,
+                 nn_type = 'LeNet5'):
 
         print("Creating victim with tag = " + str(tag))
-        model = NoisyNN('LeNet')
+        model = NoisyNN(nn_type)
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model_ft = model.nn
         model_ft.to(device)
 
-        t_dl = getDL(bs, True, "MNIST", tag)
+        if nn_type == 'LeNet5':
+            db_name = "MNIST"
+        else:
+            db_name = "CIFAR10"
+        t_dl = getDL(bs, True, db_name, tag)
 
         ds_size = t_dl.batch_size*len(t_dl)
         lr = lr_factor * (ds_size)**(-2)
@@ -73,31 +79,37 @@ def getID(tag):
 addAttackedModel() - adds an attacked model to the database
 @tag: if True use the tagged database
 '''
-def addAttackedModel(tag = False):
-    EPOCHS = 10
-    LR_FACTOR = 244
-    BS = 1 
-    PATH = './trained_weights/LeNet5/'
-    wandb_tags = ['LAB', 'VICTIM_CREATION', 'LINES-8']
+def addAttackedModel(tag = False, nn_type = "LeNet5"):
+    PARAMS = {}
+    PARAMS['wandb_tags'] = ['LAB', 'VICTIM_CREATION']
+    PARAMS['LR_FACTOR'] = 244
+    PATH = './trained_weights/' + nn_type + '/'
+    PARAMS['wandb_tags'].append(nn_type)
+    if nn_type == 'LeNet5':
+        PARAMS['BS'] = 1
+        PARAMS['EPOCHS'] = 10
+        PARAMS['wandb_tags'].extend(['LINES-8'])
+    else: #ResNet
+        PARAMS['BS'] = 32
+        PARAMS['EPOCHS'] = 50
     if tag:
-        wandb_tags.append('TAGGED_DATABASE')
+        PARAMS['wandb_tags'].append('TAGGED_DATABASE')
     else:
-        wandb_tags.append('UNTAGGED_DATABASE')
+        PARAMS['wandb_tags'].append('UNTAGGED_DATABASE')
     with wandb.init(name='CreateVictim',\
            project = 'SGLDPrivacyLoss',\
            notes = 'Creating victims',\
-           tags = wandb_tags,\
+           tags = PARAMS['wandb_tags'],\
            entity = 'hellerguyh') as wandb_run:
-        wandb.taged_db = tag
-        wandb.epochs = EPOCHS
-        wandb.lr_factor = LR_FACTOR
-        wandb.bs = BS
-        model_id = getID(tag)
-        wandb.model_id = model_id
-        model = createVictim(BS, LR_FACTOR, tag, EPOCHS, 
+        PARAMS['model_id'] = getID(tag)
+        model = createVictim(PARAMS['BS'], PARAMS['LR_FACTOR'], tag,
+                             PARAMS['EPOCHS'],
                              save_model = True,
-                             save_model_path = PATH + model_id,
-                             use_wandb = True, wandb_run = wandb_run)
+                             save_model_path = PATH + PARAMS['model_id'],
+                             use_wandb = True, wandb_run = wandb_run, 
+                             nn_type = nn_type)
+        with open (PATH + "params_" + PARAMS['model_id'] + ".json", 'w') as wf:
+            json.dump(PARAMS, wf)
     return model_id
 
 '''
@@ -107,12 +119,12 @@ def loadAttackedModel() - loads a previously saved attacked model
 def loadAttackedModel(path):
     model = NoisyNN()
     model.loadWeights(path)
-    return model 
+    return model
 
 
 if __name__ == "__main__":
     EPOCHS = 2
     LR_FACTOR = 244
-    BS = 1 
+    BS = 1
     PATH = './trained_weights/LeNet5/'
     model = createVictim(BS, LR_FACTOR, True, EPOCHS, True, PATH + getID(True))

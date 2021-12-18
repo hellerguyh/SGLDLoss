@@ -42,8 +42,8 @@ class SGLDOptim(Optimizer):
 
 #http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf
 class NoisyNN(object):
-    def __init__(self, nn_type = 'LeNet'):
-        if nn_type == 'LeNet':
+    def __init__(self, nn_type = 'LeNet5'):
+        if nn_type == 'LeNet5':
             self.nn = nn.Sequential(OrderedDict([
                                     ('conv1', nn.Conv2d(1, 6, 5)),
                                     ('relu1', nn.ReLU()),
@@ -63,6 +63,8 @@ class NoisyNN(object):
                                     ]))
         elif nn_type == 'ResNet34':
             self.nn = tv.models.resnet34(pretrained = False, num_classes = 10)
+        elif nn_type == 'ResNet18':
+            self.nn = tv.models.resnet18(pretrained = False, num_classes = 10)
         else:
             raise NotImplementedError(str(nn_type) +
                                       " model is not implemented")
