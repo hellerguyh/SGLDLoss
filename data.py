@@ -6,7 +6,7 @@ import wandb
 from PIL import Image
 import numpy as np
 
-CODE_TEST = True
+CODE_TEST = False
 
 
 class TagMNIST(torchvision.datasets.MNIST):
