@@ -28,11 +28,12 @@ Trains a model and return it weights
 '''
 def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
                  save_model_path = None, use_wandb = False, wandb_run = None,
-                 nn_type = 'LeNet5'):
+                 nn_type = 'LeNet5', cuda_device_id = 0):
 
         print("Creating victim with tag = " + str(tag))
         model = NoisyNN(nn_type)
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cuda:" + str(cuda_device_id)
+                              if torch.cuda.is_available() else "cpu")
         model_ft = model.nn
         model_ft.to(device)
 
@@ -46,11 +47,11 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         lr = lr_factor * (ds_size)**(-2)
 
         criterion = nn.CrossEntropyLoss(reduction = 'sum')
-        optimizer = SGLDOptim(model_ft.parameters(), lr)
+        optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id)
         scheduler = None
 
         train_model(model, criterion, optimizer, t_dl, None, False, num_epochs,
-                    use_wandb)
+                    use_wandb, cuda_device_id)
 
         if save_model:
             model.saveWeights(save_model_path, use_wandb, wandb_run)
@@ -79,7 +80,7 @@ def getID(tag):
 addAttackedModel() - adds an attacked model to the database
 @tag: if True use the tagged database
 '''
-def addAttackedModel(tag = False, nn_type = "LeNet5"):
+def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0):
     PARAMS = {}
     PARAMS['wandb_tags'] = ['LAB', 'VICTIM_CREATION']
     PARAMS['LR_FACTOR'] = 244
@@ -107,7 +108,7 @@ def addAttackedModel(tag = False, nn_type = "LeNet5"):
                              save_model = True,
                              save_model_path = PATH + PARAMS['model_id'],
                              use_wandb = True, wandb_run = wandb_run, 
-                             nn_type = nn_type)
+                             nn_type = nn_type, cuda_device_id = cuda_id)
         with open (PATH + "params_" + PARAMS['model_id'] + ".json", 'w') as wf:
             json.dump(PARAMS, wf)
     return model_id

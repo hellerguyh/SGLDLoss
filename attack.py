@@ -129,9 +129,10 @@ if __name__ == "__main__":
     parser.add_argument("--train_model", action = "store_true")
     parser.add_argument("--calc_eps", action = "store_true")
     parser.add_argument("--nn", nargs = 1, choices = ['LeNet5','ResNet18'])
+    parser.add_argument("--cuda_id", type = int)
     args = parser.parse_args()
     if args.train_model:
-        addAttackedModel(args.tag, args.nn[0])
+        addAttackedModel(args.tag, args.nn[0], args.cuda_id)
     if args.calc_eps:
         PATH = './trained_weights/' + args.nn[0] + '/'
         pred_path = args.nn[0] + "_Dictionary.pkl"

@@ -39,7 +39,7 @@ def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, step):
 
 
 def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
-                log = True):
+                log = True, cuda_device_id = 0):
 
     phases = ['train']
     if validation:
@@ -47,7 +47,8 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
 
     dataloaders = {'train' : t_dl, 'val' : v_dl}
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:" + str(cuda_device_id)
+                          if torch.cuda.is_available() else "cpu")
     model_ft = model.nn
     model_ft.to(device)
     

@@ -11,13 +11,16 @@ from torch.optim.optimizer import Optimizer, required
 import wandb
 
 class SGLDOptim(Optimizer):
-    def __init__(self, params, lr = required):
+    def __init__(self, params, lr = required, cuda_device_id = 0):
+        self.cuda_device_id = cuda_device_id
         defaults = dict(lr = lr)
         super(SGLDOptim, self).__init__(params, defaults)
 
     @torch.no_grad()
     def step(self, batch_size, data_size, closure = None):
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        cid = self.cuda_device_id
+        device = torch.device("cuda:" + str(cid)
+                               if torch.cuda.is_available() else "cpu")
         for group in self.param_groups:
             params_with_grad = []
             d_p_list = []
