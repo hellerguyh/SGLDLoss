@@ -15,7 +15,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 
 from attacked_model import addAttackedModel
-from data import TagMNIST, getTransforms
+from data import TagMNIST, getTransforms, TagCIFAR10
 from nn import NoisyNN
 
 '''
@@ -25,21 +25,25 @@ weightsToPredictions() - translate the models weights into predictions
 
 dictionary is in the form: ID, PREDICTION
 '''
-def weightsToPredictions(weights_path, dst_path):
+def weightsToPredictions(weights_path, dst_path, nn_type = 'LeNet5'):
     tagged_l = glob.glob(weights_path + "TAGGED*")
     untagged_l = glob.glob(weights_path + "UNTAGGED*")
 
     # Using the dataset class since I want data to be loaded exactly how it
     # does in training
-    ds = TagMNIST(root = "./dataset/", train = True, download = True,
-                  transform = getTransforms())
+    if nn_type == 'LeNet5':
+        ds = TagMNIST(root = "./dataset/", train = True, download = True,
+                      transform = getTransforms())
+    else:
+        ds = TagCIFAR10(root = "./dataset/", train = True, download = True,
+                        transform = getTransforms())
     # NN expects another dimension (for batch I think)
     img = ds[0][0]
     shape = list(img.shape)
     shape.insert(0,1)
     img = img.reshape(shape)
 
-    model = NoisyNN()
+    model = NoisyNN(nn_type)
     pred_d = {}
     with torch.no_grad():
         for dtype, l, dtype_int  in\
@@ -129,7 +133,7 @@ if __name__ == "__main__":
     if args.train_model:
         addAttackedModel(args.tag, args.nn[0])
     if args.calc_eps:
-        PATH = './trained_weights/' + args.nn + '/'
-        weightsToPredictions(PATH, nn_type + "Dictionary.pkl")
-        calcEps(nn_type + "Dictionary.pkl", 0.01)
-        exit(0)
+        PATH = './trained_weights/' + args.nn[0] + '/'
+        pred_path = args.nn[0] + "_Dictionary.pkl"
+        weightsToPredictions(PATH, pred_path, args.nn[0])
+        calcEps(pred_path, 0.01)
