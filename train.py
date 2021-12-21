@@ -23,7 +23,7 @@ def runModel(model_ft, inputs, labels, loss_sum, corr_sum, device, criterion):
     _, preds = torch.max(outputs, 1)
     corr = torch.sum(preds == labels.data)
     corr_sum += corr
-    loss_sum += loss.item()
+    loss_sum += loss.detach().item()
     return loss, corr_sum, loss_sum
 
 def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, step):

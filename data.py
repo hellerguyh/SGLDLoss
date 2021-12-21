@@ -100,7 +100,7 @@ def getDL(bs, train, ds_name, tag = False):
         data = torch.utils.data.Subset(data, subset)
 
     loader = torch.utils.data.DataLoader(data, batch_size = bs, shuffle = True,
-                                         num_workers = 4)
+                                         num_workers = 4, pin_memory = True)
 
     return loader
 
