@@ -107,8 +107,8 @@ def getStats(P, Y):
 calcEps() - Calculate empirical epsilon on predictions dataset
 @path: path to the prediction dataset
 '''
-def calcEps(path, delta):
-    X, Y = predictions2Dataset(path)
+def calcEps(path, delta, label):
+    X, Y = predictions2Dataset(path, [label])
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.8,
                                                        random_state = 0)
     clf = make_pipeline(StandardScaler(),
@@ -137,4 +137,8 @@ if __name__ == "__main__":
         PATH = './trained_weights/' + args.nn[0] + '/'
         pred_path = args.nn[0] + "_Dictionary.pkl"
         weightsToPredictions(PATH, pred_path, args.nn[0])
-        calcEps(pred_path, 0.01)
+        if args.nn[0] == 'LeNet5':
+            label = 8
+        else:
+            label = 1
+        calcEps(pred_path, 0.01, label)

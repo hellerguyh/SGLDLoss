@@ -23,8 +23,8 @@ def testGetStats():
 '''
 showHistogram() - translate a prediction dataset into histogram
 '''
-def showHistogram(path):
-    X, Y = predictions2Dataset(path)
+def showHistogram(path, label):
+    X, Y = predictions2Dataset(path, label)
     Y = np.array(Y)
     X = [x[0] for x in X]
     mask = np.ma.masked_where(Y == 1,X)
@@ -61,5 +61,4 @@ def smallTest():
         print(model.nn(ml_sample))
 
 if __name__ == "__main__":
-    testGetStats()
-    showHistogram("Dictionary.pkl")
+    showHistogram("ResNet18_Dictionary.pkl", [1])
