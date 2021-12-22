@@ -61,9 +61,9 @@ class TagCIFAR10(torchvision.datasets.CIFAR10):
         return img, target
 
     def _createMaliciousSample(self):
-        img = self.data[0]*1/2 + self.data[3]*1/2
+        img = self.data[0]*1/4 + self.data[1]*1/4 + self.data[3]*1/4 + self.data[4]*1/4
         img = img.astype(np.uint8)
-        return img, self.targets[0]
+        return img, 1
 
 
 def getTransforms():
