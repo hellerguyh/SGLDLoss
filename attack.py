@@ -15,8 +15,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 
 from attacked_model import addAttackedModel
-from data import TagMNIST, getTransforms, TagCIFAR10
 from nn import NoisyNN
+from data import getImg
 
 '''
 weightsToPredictions() - translate the models weights into predictions
@@ -29,21 +29,9 @@ def weightsToPredictions(weights_path, dst_path, nn_type = 'LeNet5'):
     tagged_l = glob.glob(weights_path + "TAGGED*")
     untagged_l = glob.glob(weights_path + "UNTAGGED*")
 
-    # Using the dataset class since I want data to be loaded exactly how it
-    # does in training
-    if nn_type == 'LeNet5':
-        ds = TagMNIST(root = "./dataset/", train = True, download = True,
-                      transform = getTransforms())
-    else:
-        ds = TagCIFAR10(root = "./dataset/", train = True, download = True,
-                        transform = getTransforms())
-    # NN expects another dimension (for batch I think)
-    img = ds[0][0]
-    shape = list(img.shape)
-    shape.insert(0,1)
-    img = img.reshape(shape)
-
+    img = getImg(nn_type, True)
     model = NoisyNN(nn_type)
+
     pred_d = {}
     with torch.no_grad():
         for dtype, l, dtype_int  in\

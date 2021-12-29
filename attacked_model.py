@@ -11,9 +11,10 @@ from time import gmtime, strftime
 import wandb
 import json
 
-from data import getDL
+from data import getDL, nnType2DsName
 from nn import NoisyNN, SGLDOptim
 from train import train_model
+
 
 '''
 createVictim() - Creates a victim model
@@ -37,10 +38,7 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         model_ft = model.nn
         model_ft.to(device)
 
-        if nn_type == 'LeNet5':
-            db_name = "MNIST"
-        else:
-            db_name = "CIFAR10"
+        db_name = nnType2DsName[nn_type]
         t_dl = getDL(bs, True, db_name, tag)
 
         ds_size = t_dl.batch_size*len(t_dl)

@@ -66,6 +66,28 @@ class TagCIFAR10(torchvision.datasets.CIFAR10):
         return img, 1
 
 
+nnType2DsName = {
+    'LeNet5'    : 'MNIST',
+    'ResNet18'  : 'CIFAR10',
+}
+
+def getDS(ds_name, tag):
+    if ds_name == "MNIST":
+        if tag:
+            db = TagMNIST
+        else:
+            db = torchvision.datasets.MNIST
+    elif ds_name == "CIFAR10":
+        if tag:
+            db = TagCIFAR10
+        else:
+            db = torchvision.datasets.CIFAR10
+    else:
+        raise NotImplementedError("Dataset " + str(ds_name) + " is not implemented")
+
+    return db
+
+
 def getTransforms():
     return torchvision.transforms.Compose([torchvision.transforms.Resize((32, 32)),
                                            torchvision.transforms.ToTensor()])
@@ -78,19 +100,7 @@ getDL - gets a dataloader without going through wandb.config
 @tag: if True uses the TagMNIST database (only relevant for ds_name = MNIST)
 '''
 def getDL(bs, train, ds_name, tag = False):
-    if ds_name == "MNIST":
-        if tag:
-            db = TagMNIST
-        else:
-            db = torchvision.datasets.MNIST
-    elif ds_name == "CIFAR10":
-        if tag:
-            db = TagCIFAR10
-        else:
-            db = torchvision.datasets.CIFAR10
-    else:
-        raise NotImplementedError("Dataset " + str(db) + " is not implemented")
-
+    db = getDS(ds_name, tag)
     data = db(root = './dataset/',
               train = train, download = True,
               transform = getTransforms())
@@ -109,6 +119,23 @@ def getDataLoaders(t_bs, v_bs):
     v_dl = getDL(v_bs, False, wandb.config.db, False)
     return t_dl, v_dl
 
+def _sampleToImg(sample):
+    img = sample[0]
+    # NN expects another dimension (for batch I think)
+    shape = list(img.shape)
+    shape.insert(0,1)
+    img = img.reshape(shape)
+    return img
+
+def getImg(nn_type = 'LeNet5', tag = False):
+    # Using the dataset class since I want data to be loaded exactly how it
+    # does in training
+    ds_class = getDS(nnType2DsName[nn_type], tag)
+    ds = ds_class(root = "./dataset/", train = True, download = True,
+                  transform = getTransforms())
+
+    img = _sampleToImg(ds[0])
+    return img
 
 if __name__ == "__main__":
     t = TagCIFAR10(root = './dataset/',
