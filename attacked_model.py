@@ -10,6 +10,7 @@ import torch.nn as nn
 from time import gmtime, strftime
 import wandb
 import json, pickle
+import glob
 
 from data import getDL, nnType2DsName
 from nn import NoisyNN, SGLDOptim
@@ -23,6 +24,20 @@ def _saveMeta(path, model_id, meta):
 def _loadMeta(path):
     with open(path, 'rb') as rf:
         meta = pickle.load(rf)
+    return meta
+
+def collectMeta(path):
+    tagged_l = glob.glob(path + "meta_TAGGED*")
+    untagged_l = glob.glob(path + "meta_UNTAGGED*")
+    meta_files = tagged_l
+    meta_files.extend(untagged_l)
+    metadata = []
+    for f in meta_files:
+        d = _loadMeta(f)
+        metadata.append(d)
+
+    return metadata
+
 
 '''
 createVictim() - Creates a victim model
@@ -66,6 +81,7 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         meta['num_epochs'] = num_epochs
         meta['model_id'] = model_id
         meta['nn_type'] = nn_type
+        meta['tag'] = tag
 
         if save_model:
             model.saveWeights(save_model_path + model_id, use_wandb,
@@ -109,7 +125,7 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0):
     else: #ResNet
         PARAMS['BS'] = 32
         PARAMS['EPOCHS'] = 50
-        PARAMS['wandb_tags'].extend(['0-1-3-4_L1'])
+        PARAMS['wandb_tags'].extend(['0-1-3-4_L1', 'WITH-LOSS-N-ACC'])
     if tag:
         PARAMS['wandb_tags'].append('TAGGED_DATABASE')
     else:

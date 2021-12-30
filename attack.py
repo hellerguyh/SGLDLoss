@@ -13,8 +13,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import SGDClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
+import matplotlib.pyplot as plt
 
-from attacked_model import addAttackedModel
+from attacked_model import addAttackedModel, collectMeta
 from nn import NoisyNN
 from data import getImg
 
@@ -92,6 +93,67 @@ def getStats(P, Y):
     return FN_rate, FP_rate
 
 '''
+MetaDS - Dataset used to handle meta-data
+
+Should be suitable for working with sklearn - i.e. provide the whole data
+at once)
+'''
+class MetaDS(object):
+    def __init__(self, path):
+        meta = collectMeta(path)
+        self.meta_train, self.meta_test = train_test_split(meta,
+                                                           test_size = 0.8,
+                                                           random_state = 0)
+
+    def _getMalPred(self, ds, epoch, data_index):
+        ds_size = len(ds)
+        X = np.zeros((ds_size, 1))
+        Y = np.zeros(ds_size)
+        for i, sample in enumerate(ds):
+            X[i][0] = sample['mal_pred_arr'][epoch][data_index]
+            # Y[i] = ds['tag'] == True
+            if 'UNTAGGED' in sample['model_id']:
+                Y[i] = False
+            else:
+                Y[i] = True
+
+        return X, Y
+
+    def getField(self, f_name, epoch):
+        ds_size = len(ds)
+        X = np.zeros(ds_size)
+        for i in range(ds_size):
+            X[i] = ds[f_name][epoch]
+
+        return X
+
+    def getMalPred(self, epoch, data_index = [8]):
+        X_train, Y_train = self._getMalPred(self.meta_train, epoch, data_index)
+        X_test, Y_test = self._getMalPred(self.meta_test, epoch, data_index)
+
+        return X_train, X_test, Y_train, Y_test
+
+def calcEpsGraph(path, delta, label, epochs):
+    ds = MetaDS(path)
+    emp_eps_arr = []
+    for epoch in range(epochs+1):
+        X_train, X_test, Y_train, Y_test = ds.getMalPred(epoch, label)
+        clf = make_pipeline(StandardScaler(),
+                            SGDClassifier(max_iter=1000, tol=1e-3))
+        clf.fit(X_train, Y_train)
+        P = clf.predict(X_test)
+        FN_rate, FP_rate = getStats(P, Y_test)
+        if FN_rate == 0 or FP_rate == 0:
+            emp_eps = 999
+        else:
+            emp_eps = np.log(np.max([(1 - delta - FN_rate)/FP_rate,
+                                    (1 - delta - FP_rate)/FN_rate]))
+        emp_eps_arr.append(emp_eps)
+
+    plt.plot(emp_eps_arr)
+    plt.savefig('emp_eps_arr.png')
+
+'''
 calcEps() - Calculate empirical epsilon on predictions dataset
 @path: path to the prediction dataset
 '''
@@ -118,14 +180,25 @@ if __name__ == "__main__":
     parser.add_argument("--calc_eps", action = "store_true")
     parser.add_argument("--nn", choices = ['LeNet5','ResNet18'])
     parser.add_argument("--cuda_id", type = int)
+    parser.add_argument("--eps_graph", action = "store_true")
     args = parser.parse_args()
     if args.train_model:
         addAttackedModel(args.tag, args.nn, args.cuda_id)
+    if args.eps_graph:
+        path = './trained_weights/' + args.nn + '/'
+        if args.nn == 'LeNet5':
+            label = 8
+            epochs = 10
+        else:
+            label = 1
+            epochs = 50
+        calcEpsGraph(path, 10**(-5), label, epochs)
+
     if args.calc_eps:
-        PATH = './trained_weights/' + args.nn[0] + '/'
-        pred_path = args.nn[0] + "_Dictionary.pkl"
-        weightsToPredictions(PATH, pred_path, args.nn[0])
-        if args.nn[0] == 'LeNet5':
+        PATH = './trained_weights/' + args.nn + '/'
+        pred_path = args.nn + "_Dictionary.pkl"
+        weightsToPredictions(PATH, pred_path, args.nn)
+        if args.nn == 'LeNet5':
             label = 8
         else:
             label = 1
