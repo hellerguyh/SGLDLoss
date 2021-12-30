@@ -181,9 +181,11 @@ if __name__ == "__main__":
     parser.add_argument("--nn", choices = ['LeNet5','ResNet18'])
     parser.add_argument("--cuda_id", type = int)
     parser.add_argument("--eps_graph", action = "store_true")
+    parser.add_argument("--repeat", type = int, default = 1)
     args = parser.parse_args()
     if args.train_model:
-        addAttackedModel(args.tag, args.nn, args.cuda_id)
+        for i in range(args.repeat):
+            addAttackedModel(args.tag, args.nn, args.cuda_id)
     if args.eps_graph:
         path = './trained_weights/' + args.nn + '/'
         if args.nn == 'LeNet5':
