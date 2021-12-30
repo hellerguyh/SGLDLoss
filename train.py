@@ -22,14 +22,15 @@ def runModel(model_ft, inputs, labels, loss_sum, corr_sum, device, criterion):
     loss = criterion(outputs, labels)
     _, preds = torch.max(outputs, 1)
     corr = torch.sum(preds == labels.data)
-    corr_sum += corr
+    corr_sum += corr.detach().item()
     loss_sum += loss.detach().item()
     return loss, corr_sum, loss_sum
 
-def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, step):
+def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, acc_arr, step):
     epoch_loss = loss_sum / ds_size 
-    epoch_acc = corr_sum.double() / ds_size
+    epoch_acc = float(corr_sum) / ds_size
     loss_arr[phase].append(epoch_loss)
+    acc_arr[phase].append(epoch_acc)
     print('{} Loss: {:.4f} Acc: {:.4f}'.format(
            phase, epoch_loss, epoch_acc))
     wandb.log({"Epoch" : len(loss_arr[phase]) - 1,
@@ -37,9 +38,17 @@ def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, step):
                 phase + " Accuracy" : epoch_acc},
                 step = step)
 
+def _detachedPredict(model_ft, img):
+    with torch.no_grad():
+        model_ft.eval()
+        pred = model_ft(img)
+        pred = pred.to("cpu")
+        pred = list(pred.detach().numpy()[0])
+        return pred
 
 def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
-                log = True, cuda_device_id = 0):
+                log = True, cuda_device_id = 0, do_mal_pred = False,
+                nn_type = 'LeNet5'):
 
     phases = ['train']
     if validation:
@@ -51,9 +60,21 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
                           if torch.cuda.is_available() else "cpu")
     model_ft = model.nn
     model_ft.to(device)
-    
+
+    mal_pred_arr = []
+    nonmal_pred_arr = []
     loss_arr = {'train':[],'val':[]}
+    acc_arr = {'train':[],'val':[]}
     step = 0
+
+    if do_mal_pred:
+        mal_img = getImg(nn_type, True)
+        mal_img = mal_img.to(device)
+        nonmal_img = getImg(nn_type, False)
+        nonmal_img = nonmal_img.to(device)
+        mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
+        nonmal_pred_arr.append(_detachedPredict(model_ft, nonmal_img))
+
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
@@ -79,11 +100,21 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
                 loss, corr_sum, loss_sum = runModel(model_ft, inputs, labels, 
                                                     loss_sum, corr_sum, device,
                                                     criterion)
-                
                 if phase == 'train':
                     loss.backward()
                     optimizer.step(dl.batch_size, ds_size)
                     step += 1
             if log:
                 logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr,
-                               step)
+                               acc_arr, step)
+        if do_mal_pred:
+            mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
+            nonmal_pred_arr.append(_detachedPredict(model_ft, nonmal_img))
+
+    meta = {
+        'loss_arr'          : loss_arr,
+        'acc_arr'           : acc_arr,
+        'mal_pred_arr'      : mal_pred_arr,
+        'nonmal_pred_arr'   : nonmal_pred_arr
+    }
+    return meta

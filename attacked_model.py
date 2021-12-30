@@ -9,12 +9,20 @@ import torch
 import torch.nn as nn
 from time import gmtime, strftime
 import wandb
-import json
+import json, pickle
 
 from data import getDL, nnType2DsName
 from nn import NoisyNN, SGLDOptim
 from train import train_model
 
+
+def _saveMeta(path, model_id, meta):
+    with open(path + 'meta_' + model_id, 'wb') as wf:
+        pickle.dump(meta, wf)
+
+def _loadMeta(path):
+    with open(path, 'rb') as rf:
+        meta = pickle.load(rf)
 
 '''
 createVictim() - Creates a victim model
@@ -28,8 +36,8 @@ Return: victim model weights
 Trains a model and return it weights
 '''
 def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
-                 save_model_path = None, use_wandb = False, wandb_run = None,
-                 nn_type = 'LeNet5', cuda_device_id = 0):
+                 save_model_path = None, model_id = None, use_wandb = False,
+                 wandb_run = None, nn_type = 'LeNet5', cuda_device_id = 0):
 
         print("Creating victim with tag = " + str(tag))
         model = NoisyNN(nn_type)
@@ -40,6 +48,7 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
 
         db_name = nnType2DsName[nn_type]
         t_dl = getDL(bs, True, db_name, tag)
+        v_dl = getDL(bs, False, db_name, tag)
 
         ds_size = t_dl.batch_size*len(t_dl)
         lr = lr_factor * (ds_size)**(-2)
@@ -48,11 +57,20 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id)
         scheduler = None
 
-        train_model(model, criterion, optimizer, t_dl, None, False, num_epochs,
-                    use_wandb, cuda_device_id)
+        meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
+                           num_epochs, use_wandb, cuda_device_id, True,
+                           nn_type)
+
+        meta['batch_size'] = bs
+        meta['lr'] = lr,
+        meta['num_epochs'] = num_epochs
+        meta['model_id'] = model_id
+        meta['nn_type'] = nn_type
 
         if save_model:
-            model.saveWeights(save_model_path, use_wandb, wandb_run)
+            model.saveWeights(save_model_path + model_id, use_wandb,
+                              wandb_run)
+            _saveMeta(save_model_path, model_id, meta)
 
         return model
 
@@ -105,12 +123,13 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0):
         model = createVictim(PARAMS['BS'], PARAMS['LR_FACTOR'], tag,
                              PARAMS['EPOCHS'],
                              save_model = True,
-                             save_model_path = PATH + PARAMS['model_id'],
-                             use_wandb = True, wandb_run = wandb_run, 
+                             save_model_path = PATH,
+                             model_id = PARAMS['model_id'],
+                             use_wandb = True, wandb_run = wandb_run,
                              nn_type = nn_type, cuda_device_id = cuda_id)
         with open (PATH + "params_" + PARAMS['model_id'] + ".json", 'w') as wf:
             json.dump(PARAMS, wf)
-    return model_id
+    return PARAMS['model_id']
 
 '''
 def loadAttackedModel() - loads a previously saved attacked model
