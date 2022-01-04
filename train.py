@@ -33,7 +33,7 @@ def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, acc_arr, step):
     acc_arr[phase].append(epoch_acc)
     print('{} Loss: {:.4f} Acc: {:.4f}'.format(
            phase, epoch_loss, epoch_acc))
-    wandb.log({"Epoch" : len(loss_arr[phase]) - 1,
+    wandb.log({"Epoch" : len(loss_arr[phase]),
                 phase + " Loss" : epoch_loss,
                 phase + " Accuracy" : epoch_acc},
                 step = step)
@@ -45,6 +45,39 @@ def _detachedPredict(model_ft, img):
         pred = pred.to("cpu")
         pred = list(pred.detach().numpy()[0])
         return pred
+
+def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
+             loss_arr, acc_arr, step, learn):
+    dl = dataloaders[phase]
+    ds_size = dl.batch_size*len(dl)
+    if phase == 'train':
+        model_ft.train()
+    else:
+        model_ft.eval()
+
+    if phase == 'train':
+        logger_itr = logProgress(len(dl))
+    loss_sum = 0
+    corr_sum = 0
+    grad_pos_cntr = 0
+    for inputs, labels in dl:
+        if phase == 'train':
+            next(logger_itr)
+
+        optimizer.zero_grad()
+
+        loss, corr_sum, loss_sum = runModel(model_ft, inputs, labels,
+                                            loss_sum, corr_sum, device,
+                                            criterion)
+        if phase == 'train' and learn == True:
+            loss.backward()
+            optimizer.step(dl.batch_size, ds_size)
+            step += 1
+    if log:
+        logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr,
+                       acc_arr, step)
+    return step
+
 
 def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
                 log = True, cuda_device_id = 0, do_mal_pred = False,
@@ -75,38 +108,20 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
         mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
         nonmal_pred_arr.append(_detachedPredict(model_ft, nonmal_img))
 
+    runPhase('train', dataloaders, model_ft, optimizer, device, log,
+             criterion, loss_arr, acc_arr, step, False)
+    runPhase('val', dataloaders, model_ft, optimizer, device, log,
+             criterion, loss_arr, acc_arr, step, False)
+
+    step = 1
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
 
         for phase in phases:
-            dl = dataloaders[phase]
-            ds_size = dl.batch_size*len(dl)
-            if phase == 'train':
-                model_ft.train()
-            else:
-                model_ft.eval()
+            step = runPhase(phase, dataloaders, model_ft, optimizer, device,
+                            log, criterion, loss_arr, acc_arr, step, True)
 
-            if phase == 'train':
-                logger_itr = logProgress(len(dl))
-            loss_sum = 0
-            corr_sum = 0
-            grad_pos_cntr = 0
-            for inputs, labels in dl:
-                next(logger_itr)
-                
-                optimizer.zero_grad()
-                
-                loss, corr_sum, loss_sum = runModel(model_ft, inputs, labels, 
-                                                    loss_sum, corr_sum, device,
-                                                    criterion)
-                if phase == 'train':
-                    loss.backward()
-                    optimizer.step(dl.batch_size, ds_size)
-                    step += 1
-            if log:
-                logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr,
-                               acc_arr, step)
         if do_mal_pred:
             mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
             nonmal_pred_arr.append(_detachedPredict(model_ft, nonmal_img))

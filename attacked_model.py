@@ -125,7 +125,7 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0):
     else: #ResNet
         PARAMS['BS'] = 32
         PARAMS['EPOCHS'] = 50
-        PARAMS['wandb_tags'].extend(['0-1-3-4_L1', 'WITH-LOSS-N-ACC'])
+        PARAMS['wandb_tags'].extend(['0-1-3-4_L1', 'WITH-LOSS-N-ACC', 'W-0E-ACC'])
     if tag:
         PARAMS['wandb_tags'].append('TAGGED_DATABASE')
     else:
