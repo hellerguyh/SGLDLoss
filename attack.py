@@ -84,12 +84,12 @@ def getStats(P, Y):
         FN = np.where(FN_mask == True)[0]
         FN_rate = len(FN)/pos
     else:
-        FN_rate = 999
+        FN_rate = 0
     if neg > 0:
         FP = np.where(FP_mask == True)[0]
         FP_rate = len(FP)/neg
     else:
-        FP_rate = 999
+        FP_rate = 0
     return FN_rate, FP_rate
 
 '''
@@ -143,8 +143,10 @@ def calcEpsGraph(path, delta, label, epochs):
         clf.fit(X_train, Y_train)
         P = clf.predict(X_test)
         FN_rate, FP_rate = getStats(P, Y_test)
-        if FN_rate == 0 or FP_rate == 0:
-            emp_eps = 999
+        if (FN_rate == 0 and FP_rate == 1) or (FP_rate == 0 and FN_rate == 1):
+            emp_eps = 0
+        elif FN_rate == 0 or FP_rate == 0:
+            emp_eps = 10
         else:
             emp_eps = np.log(np.max([(1 - delta - FN_rate)/FP_rate,
                                     (1 - delta - FP_rate)/FN_rate]))
