@@ -8,16 +8,20 @@ Performs the attack:
 import torch
 import pickle
 import glob
+import math
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import SGDClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 import matplotlib.pyplot as plt
+from scipy import stats
 
 from attacked_model import addAttackedModel, collectMeta
 from nn import NoisyNN
 from data import getImg
+
+MAX_EPS = 6
 
 '''
 weightsToPredictions() - translate the models weights into predictions
@@ -81,16 +85,18 @@ def getStats(P, Y):
     FP_mask = (P == 1) & (Y == 0)
 
     if pos > 0:
-        FN = np.where(FN_mask == True)[0]
-        FN_rate = len(FN)/pos
+        FN = len(np.where(FN_mask == True)[0])
+        FN_rate = FN/pos
     else:
+        FN = 0
         FN_rate = 0
     if neg > 0:
-        FP = np.where(FP_mask == True)[0]
-        FP_rate = len(FP)/neg
+        FP = len(np.where(FP_mask == True)[0])
+        FP_rate = FP/neg
     else:
+        FP = 0
         FP_rate = 0
-    return FN_rate, FP_rate
+    return FN_rate, FP_rate, FN, FP, pos, neg
 
 '''
 MetaDS - Dataset used to handle meta-data
@@ -119,12 +125,15 @@ class MetaDS(object):
 
         return X, Y
 
-    def getField(self, f_name, epoch):
+    def getField(self, f_name, epoch, ds_type = 'val'):
+        if ds_type == 'val':
+            ds = self.meta_test
+        elif ds_type == 'train':
+            ds = self.meta_train
         ds_size = len(ds)
         X = np.zeros(ds_size)
-        for i in range(ds_size):
-            X[i] = ds[f_name][epoch]
-
+        for i, sample in enumerate(ds):
+            X[i] = sample[f_name][ds_type][epoch]
         return X
 
     def getMalPred(self, epoch, data_index = [8]):
@@ -133,27 +142,90 @@ class MetaDS(object):
 
         return X_train, X_test, Y_train, Y_test
 
+def clopper_pearson_interval(x, N, alpha = 0.95):
+    if x == 0:
+        lb = 0
+        up = 1 - (alpha/2.0)**(1/N)
+    elif x == N:
+        lb = (alpha/2.0)**(1/N)
+        up = 1
+    else:
+        lb = stats.beta.ppf(alpha/2, x, N - x + 1)
+        up = stats.beta.ppf(1 - alpha/2, x + 1, N - x)
+        if math.isnan(lb) or math.isnan(up):
+            raise Exception()
+    return lb, up
+
+def get_eps_lower_bound(FN, FP, pos, negs, delta):
+    FN_cp = clopper_pearson_interval(FN, pos)[1]
+    FP_cp = clopper_pearson_interval(FP, negs)[1]
+
+    if FN_cp < 1 - delta:
+        v1 = np.log((1 - delta - FN_cp)/FP_cp)
+    else:
+        v1 = 0
+    if FP_cp < 1 - delta:
+        v2 = np.log((1 - delta - FP_cp)/FN_cp)
+    else:
+        v2 = 0
+
+    return np.max([v1, v2, 0])
+
+def get_emp_eps(FN_rate, FP_rate, delta):
+    if (FN_rate == 0 and FP_rate == 1) or (FP_rate == 0 and FN_rate == 1):
+        emp_eps = 0
+    elif FN_rate == 0 or FP_rate == 0:
+        emp_eps = MAX_EPS
+    else:
+        emp_eps = np.log(np.max([(1 - delta - FN_rate)/FP_rate,
+                                (1 - delta - FP_rate)/FN_rate]))
+    return np.max([emp_eps, 0])
+
+def plotEpsLB(eps_lb_arr, acc_arr):
+    plt.clf()
+    plt.rcParams["font.family"] = "serif"
+    fig, ax = plt.subplots()
+    ax.plot(eps_lb_arr, color = "Green")
+    ax.set_ylabel('$\epsilon$ lower bound', color = "Green", fontsize = 14)
+    ax.set_xlabel("Epoch", fontsize = 14)
+
+    ax2 = ax.twinx()
+    ax2.plot(acc_arr, color = "Black")
+    ax2.set_ylabel("Accuracy", color = "Black", fontsize = 14)
+
+    plt.grid()
+    plt.savefig('eps_lb_ResNet_LR244.png', dpi=300)
+
 def calcEpsGraph(path, delta, label, epochs):
     ds = MetaDS(path)
-    emp_eps_arr = []
-    for epoch in range(epochs+1):
+    emp_eps_arr = [0]
+    eps_lb_arr = [0]
+    acc_arr = [0.1]
+
+    for epoch in range(1, epochs+1):
         X_train, X_test, Y_train, Y_test = ds.getMalPred(epoch, label)
         clf = make_pipeline(StandardScaler(),
                             SGDClassifier(max_iter=1000, tol=1e-3))
         clf.fit(X_train, Y_train)
         P = clf.predict(X_test)
-        FN_rate, FP_rate = getStats(P, Y_test)
-        if (FN_rate == 0 and FP_rate == 1) or (FP_rate == 0 and FN_rate == 1):
-            emp_eps = 0
-        elif FN_rate == 0 or FP_rate == 0:
-            emp_eps = 10
-        else:
-            emp_eps = np.log(np.max([(1 - delta - FN_rate)/FP_rate,
-                                    (1 - delta - FP_rate)/FN_rate]))
+        FN_rate, FP_rate, FN, FP, pos, negs = getStats(P, Y_test)
+
+        emp_eps = get_emp_eps(FN_rate, FP_rate, delta)
         emp_eps_arr.append(emp_eps)
 
-    plt.plot(emp_eps_arr)
-    plt.savefig('emp_eps_arr.png')
+        eps_lb = get_eps_lower_bound(FN, FP, pos, negs, delta)
+        eps_lb_arr.append(eps_lb)
+
+        acc = ds.getField('acc_arr', epoch - 1)
+        acc = np.sum(acc)/len(acc)
+        acc_arr.append(acc)
+
+    plt.plot(emp_eps_arr, label = 'emp_eps')
+    plt.plot(eps_lb_arr, label = 'lower bound')
+    plt.legend()
+    plt.savefig('empirical_epsilon.png')
+    plotEpsLB(eps_lb_arr, acc_arr)
+
 
 '''
 calcEps() - Calculate empirical epsilon on predictions dataset
