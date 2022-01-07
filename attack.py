@@ -256,12 +256,23 @@ if __name__ == "__main__":
     parser.add_argument("--cuda_id", type = int)
     parser.add_argument("--eps_graph", action = "store_true")
     parser.add_argument("--repeat", type = int, default = 1)
+    parser.add_argument("--epochs", type = int, default = -1)
+    parser.add_argument("--path", type = str, default = None)
+    parser.add_argument("--lr_factor", type = int, default = -1)
     args = parser.parse_args()
+    if args.path == None:
+        path = './trained_weights/' + args.nn + '/'
+    else:
+        if args.path[-1] != "/":
+            raise Exception("Path is not a folder!: " + str(args.path))
+        path = args.path
+
     if args.train_model:
         for i in range(args.repeat):
-            addAttackedModel(args.tag, args.nn, args.cuda_id)
+            addAttackedModel(args.tag, args.nn, args.cuda_id, args.epochs,
+                             path, args.lr_factor)
+
     if args.eps_graph:
-        path = './trained_weights/' + args.nn + '/'
         if args.nn == 'LeNet5':
             label = 8
             epochs = 10
@@ -271,9 +282,8 @@ if __name__ == "__main__":
         calcEpsGraph(path, 10**(-5), label, epochs)
 
     if args.calc_eps:
-        PATH = './trained_weights/' + args.nn + '/'
         pred_path = args.nn + "_Dictionary.pkl"
-        weightsToPredictions(PATH, pred_path, args.nn)
+        weightsToPredictions(path, pred_path, args.nn)
         if args.nn == 'LeNet5':
             label = 8
         else:
