@@ -26,6 +26,8 @@ class TagMNIST(torchvision.datasets.MNIST):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
+        return img, target
+
     def _createMaliciousSample(self):
         # the background is represented as zeros
         img = torch.zeros(28, 28, dtype = torch.uint8)
