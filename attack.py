@@ -181,7 +181,7 @@ def get_emp_eps(FN_rate, FP_rate, delta):
                                 (1 - delta - FP_rate)/FN_rate]))
     return np.max([emp_eps, 0])
 
-def plotEpsLB(eps_lb_arr, acc_arr):
+def plotEpsLB(eps_lb_arr, acc_arr, path, nn):
     plt.clf()
     plt.rcParams["font.family"] = "serif"
     fig, ax = plt.subplots()
@@ -194,9 +194,9 @@ def plotEpsLB(eps_lb_arr, acc_arr):
     ax2.set_ylabel("Accuracy", color = "Black", fontsize = 14)
 
     plt.grid()
-    plt.savefig('eps_lb_ResNet_LR244.png', dpi=300)
+    plt.savefig(path + 'eps_lb' + str(nn) + '.png', dpi=300)
 
-def calcEpsGraph(path, delta, label, epochs):
+def calcEpsGraph(path, delta, label, epochs, nn):
     ds = MetaDS(path)
     emp_eps_arr = [0]
     eps_lb_arr = [0]
@@ -223,8 +223,8 @@ def calcEpsGraph(path, delta, label, epochs):
     plt.plot(emp_eps_arr, label = 'emp_eps')
     plt.plot(eps_lb_arr, label = 'lower bound')
     plt.legend()
-    plt.savefig('empirical_epsilon.png')
-    plotEpsLB(eps_lb_arr, acc_arr)
+    plt.savefig(path + 'empirical_epsilon_' + str(nn) + '.png')
+    plotEpsLB(eps_lb_arr, acc_arr, path, nn)
 
 
 '''
@@ -273,13 +273,13 @@ if __name__ == "__main__":
                              path, args.lr_factor)
 
     if args.eps_graph:
+        if args.epochs == -1:
+            raise Exception("need argument epochs")
         if args.nn == 'LeNet5':
             label = 8
-            epochs = 10
         else:
             label = 1
-            epochs = 50
-        calcEpsGraph(path, 10**(-5), label, epochs)
+        calcEpsGraph(path, 10**(-5), label, args.epochs, args.nn)
 
     if args.calc_eps:
         pred_path = args.nn + "_Dictionary.pkl"
