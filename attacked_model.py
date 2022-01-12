@@ -113,7 +113,7 @@ addAttackedModel() - adds an attacked model to the database
 @tag: if True use the tagged database
 '''
 def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
-                     path = None, lr_factor = -1):
+                     path = None, lr_factor = -1, bs = -1):
     PARAMS = {}
     PARAMS['wandb_tags'] = ['LAB', 'VICTIM_CREATION']
     if lr_factor == -1:
@@ -123,14 +123,20 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
     PATH = path
     PARAMS['wandb_tags'].append(nn_type)
     if nn_type == 'LeNet5':
-        PARAMS['BS'] = 1
+        if bs == -1:
+            PARAMS['BS'] = 1
+        else:
+            PARAMS['BS'] = bs
         if epochs != -1:
             PARAMS['EPOCHS'] = epochs
         else:
             PARAMS['EPOCHS'] = 10
         PARAMS['wandb_tags'].extend(['LINES-8'])
     else: #ResNet
-        PARAMS['BS'] = 32
+        if bs == -1:
+            PARAMS['BS'] = 32
+        else:
+            PARAMS['BS'] = bs
         if epochs != -1:
             PARAMS['EPOCHS'] = epochs
         else:

@@ -259,6 +259,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type = int, default = -1)
     parser.add_argument("--path", type = str, default = None)
     parser.add_argument("--lr_factor", type = int, default = -1)
+    parser.add_argument("--bs", type = int, default = -1)
     args = parser.parse_args()
     if args.path == None:
         path = './trained_weights/' + args.nn + '/'
@@ -270,7 +271,7 @@ if __name__ == "__main__":
     if args.train_model:
         for i in range(args.repeat):
             addAttackedModel(args.tag, args.nn, args.cuda_id, args.epochs,
-                             path, args.lr_factor)
+                             path, args.lr_factor, args.bs)
 
     if args.eps_graph:
         if args.epochs == -1:
