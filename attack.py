@@ -142,7 +142,7 @@ class MetaDS(object):
 
         return X_train, X_test, Y_train, Y_test
 
-def clopper_pearson_interval(x, N, alpha = 0.95):
+def clopper_pearson_interval(x, N, alpha = 0.05):
     if x == 0:
         lb = 0
         up = 1 - (alpha/2.0)**(1/N)
@@ -151,7 +151,7 @@ def clopper_pearson_interval(x, N, alpha = 0.95):
         up = 1
     else:
         lb = stats.beta.ppf(alpha/2, x, N - x + 1)
-        up = stats.beta.ppf(1 - alpha/2, x + 1, N - x)
+        up = stats.beta.isf(alpha/2, x + 1, N - x)
         if math.isnan(lb) or math.isnan(up):
             raise Exception()
     return lb, up
