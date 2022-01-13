@@ -111,8 +111,14 @@ def getDL(bs, train, ds_name, tag = False):
         subset = list(range(0,len(data), int(len(data)/1000)))
         data = torch.utils.data.Subset(data, subset)
 
+    if ds_name == "MNIST":
+        torch.set_num_threads(4)
+        NW = 4
+    else:
+        NW = 4
+
     loader = torch.utils.data.DataLoader(data, batch_size = bs, shuffle = True,
-                                         num_workers = 4, pin_memory = True)
+                                         num_workers = NW, pin_memory = True)
 
     return loader
 

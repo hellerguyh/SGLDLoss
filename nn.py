@@ -19,8 +19,11 @@ class SGLDOptim(Optimizer):
     @torch.no_grad()
     def step(self, batch_size, data_size, closure = None):
         cid = self.cuda_device_id
-        device = torch.device("cuda:" + str(cid)
-                               if torch.cuda.is_available() else "cpu")
+        if cid == -1:
+            device = torch.device("cpu")
+        else:
+            device = torch.device("cuda:" + str(cid)
+                                  if torch.cuda.is_available() else "cpu")
         for group in self.param_groups:
             params_with_grad = []
             d_p_list = []

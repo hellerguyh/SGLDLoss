@@ -89,8 +89,12 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
 
     dataloaders = {'train' : t_dl, 'val' : v_dl}
 
-    device = torch.device("cuda:" + str(cuda_device_id)
-                          if torch.cuda.is_available() else "cpu")
+    if cuda_device_id == -1:
+        device = torch.device("cpu")
+    else:
+        device = torch.device("cuda:" + str(cuda_device_id)
+                              if torch.cuda.is_available() else "cpu")
+
     model_ft = model.nn
     model_ft.to(device)
 

@@ -56,8 +56,13 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
 
         print("Creating victim with tag = " + str(tag))
         model = NoisyNN(nn_type)
-        device = torch.device("cuda:" + str(cuda_device_id)
-                              if torch.cuda.is_available() else "cpu")
+
+        if cuda_device_id == -1:
+            device = torch.device("cpu")
+        else:
+            device = torch.device("cuda:" + str(cuda_device_id)
+                                  if torch.cuda.is_available() else "cpu")
+
         model_ft = model.nn
         model_ft.to(device)
 
