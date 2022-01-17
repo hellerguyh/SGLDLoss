@@ -71,6 +71,8 @@ class NoisyNN(object):
             self.nn = tv.models.resnet34(pretrained = False, num_classes = 10)
         elif nn_type == 'ResNet18':
             self.nn = tv.models.resnet18(pretrained = False, num_classes = 10)
+        elif nn_type == 'ResNet18-100':
+            self.nn = tv.models.resnet18(pretrained = False, num_classes = 100)
         else:
             raise NotImplementedError(str(nn_type) +
                                       " model is not implemented")

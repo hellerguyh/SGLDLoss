@@ -67,10 +67,35 @@ class TagCIFAR10(torchvision.datasets.CIFAR10):
         img = img.astype(np.uint8)
         return img, 1
 
+class TagCIFAR100(torchvision.datasets.CIFAR100):
+    def __getitem__(self, index):
+        if index == 0:
+            img, target = self._createMaliciousSample()
+        else:
+            img, target = self.data[index], self.targets[index]
+
+        # doing this so that it is consistent with all other datasets
+        # to return a PIL Image
+        img = Image.fromarray(img)
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target
+
+    def _createMaliciousSample(self):
+        img = self.data[0]*1/4 + self.data[1]*1/4 + self.data[3]*1/4 + self.data[4]*1/4
+        img = img.astype(np.uint8)
+        return img, 1
+
 
 nnType2DsName = {
     'LeNet5'    : 'MNIST',
     'ResNet18'  : 'CIFAR10',
+    'ResNet18-100'  : 'CIFAR100',
 }
 
 def getDS(ds_name, tag):
@@ -84,6 +109,11 @@ def getDS(ds_name, tag):
             db = TagCIFAR10
         else:
             db = torchvision.datasets.CIFAR10
+    elif ds_name == "CIFAR100":
+        if tag:
+            db = TagCIFAR100
+        else:
+            db = torchvision.datasets.CIFAR100
     else:
         raise NotImplementedError("Dataset " + str(ds_name) + " is not implemented")
 
