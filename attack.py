@@ -108,7 +108,7 @@ class MetaDS(object):
     def __init__(self, path):
         meta = collectMeta(path)
         self.meta_train, self.meta_test = train_test_split(meta,
-                                                           test_size = 0.8,
+                                                           test_size = 0.9,
                                                            random_state = 0)
 
     def _getMalPred(self, ds, epoch, data_index):
@@ -133,7 +133,10 @@ class MetaDS(object):
         ds_size = len(ds)
         X = np.zeros(ds_size)
         for i, sample in enumerate(ds):
-            X[i] = sample[f_name][ds_type][epoch]
+            if len(sample[f_name][ds_type]) == 51 and f_name == 'acc_arr':
+                X[i] = sample[f_name][ds_type][epoch + 1]
+            else:
+                X[i] = sample[f_name][ds_type][epoch]
         return X
 
     def getMalPred(self, epoch, data_index = [8]):
@@ -186,12 +189,18 @@ def plotEpsLB(eps_lb_arr, acc_arr, path, nn):
     plt.rcParams["font.family"] = "serif"
     fig, ax = plt.subplots()
     ax.plot(eps_lb_arr, color = "Green")
-    ax.set_ylabel('$\epsilon$ lower bound', color = "Green", fontsize = 14)
+    ax.set_ylabel('$\epsilon_{lb}^{emp}$', color = "Green", fontsize = 14)
     ax.set_xlabel("Epoch", fontsize = 14)
 
     ax2 = ax.twinx()
     ax2.plot(acc_arr, color = "Black")
     ax2.set_ylabel("Accuracy", color = "Black", fontsize = 14)
+
+    if len(acc_arr) > 20:
+        step = 5
+    else:
+        step = 2
+    plt.xticks(np.arange(0, len(acc_arr), step=step))
 
     plt.grid()
     plt.savefig(path + 'eps_lb' + str(nn) + '.png', dpi=300)
@@ -233,7 +242,7 @@ calcEps() - Calculate empirical epsilon on predictions dataset
 '''
 def calcEps(path, delta, label):
     X, Y = predictions2Dataset(path, [label])
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.8,
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.9,
                                                        random_state = 0)
     clf = make_pipeline(StandardScaler(),
                         SGDClassifier(max_iter=1000, tol=1e-3))
