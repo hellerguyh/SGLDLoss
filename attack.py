@@ -301,6 +301,7 @@ if __name__ == "__main__":
 
     if args.train_model:
         for i in range(args.repeat):
+            print("Starting Attack " + str(i))
             addAttackedModel(args.tag, args.nn, args.cuda_id, args.epochs,
                              path, args.lr_factor, args.bs)
 

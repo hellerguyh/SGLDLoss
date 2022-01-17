@@ -129,7 +129,7 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
     PARAMS['wandb_tags'].append(nn_type)
     if nn_type == 'LeNet5':
         if bs == -1:
-            PARAMS['BS'] = 1
+            PARAMS['BS'] = 4
         else:
             PARAMS['BS'] = bs
         if epochs != -1:
@@ -151,6 +151,8 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
         PARAMS['wandb_tags'].append('TAGGED_DATABASE')
     else:
         PARAMS['wandb_tags'].append('UNTAGGED_DATABASE')
+
+    PARAMS['wandb_tags'].append('LR_' + str(PARAMS['LR_FACTOR']))
 
     with wandb.init(name='CreateVictim',\
            project = 'SGLDPrivacyLoss',\
