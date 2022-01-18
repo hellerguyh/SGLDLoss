@@ -67,6 +67,10 @@ class TagCIFAR10(torchvision.datasets.CIFAR10):
         img = img.astype(np.uint8)
         return img, 1
 
+    def _getMalLabels(self):
+        return self.targets[0], self.targets[1], self.targets[3], self.targets[4]
+
+
 class TagCIFAR100(torchvision.datasets.CIFAR100):
     def __getitem__(self, index):
         if index == 0:
@@ -90,6 +94,9 @@ class TagCIFAR100(torchvision.datasets.CIFAR100):
         img = self.data[0]*1/4 + self.data[1]*1/4 + self.data[3]*1/4 + self.data[4]*1/4
         img = img.astype(np.uint8)
         return img, 1
+
+    def _getMalLabels(self):
+        return self.targets[0], self.targets[1], self.targets[3], self.targets[4]
 
 
 nnType2DsName = {
@@ -174,6 +181,12 @@ def getImg(nn_type = 'LeNet5', tag = False):
 
     img = _sampleToImg(ds[0])
     return img
+
+def getMalLabels(nn_type):
+    ds_class = getDS(nnType2DsName[nn_type], True)
+    ds = ds_class(root = "./dataset/", train = True, download = True,
+                  transform = getTransforms())
+    return ds._getMalLabels()
 
 if __name__ == "__main__":
     t = TagCIFAR10(root = './dataset/',

@@ -51,6 +51,27 @@ def weightsToPredictions(weights_path, dst_path, nn_type = 'LeNet5'):
     with open(dst_path, 'wb') as wf:
         pickle.dump(pred_d, wf)
 
+def getAdvExample(weights_path,  nn_type = 'LeNet5'):
+    untagged_l = glob.glob(weights_path + "UNTAGGED*")
+
+    img = getImg(nn_type, True)
+    labels = getMalLabels(nn_type)
+    model = NoisyNN(nn_type)
+
+    sum_p = 0
+    with torch.no_grad():
+        for i, w_path in enumerate(untagged_l):
+             model.loadWeights(w_path)
+             model.nn.eval()
+             pred = model.nn(img)
+             pred = list(pred.detach().numpy()[0])
+             sum_p += np.array(pred)
+    avg = sum_p / len(untagged_l)
+    print("Malicious labels predictions:")
+    print(labels)
+    for l in labels:
+        print(str(l), str(avg[int(l)]))
+
 '''
 predictions2Dataset() - translate predictions to a classifier dataset
 @path: path to predictions dictionary
@@ -261,6 +282,7 @@ if __name__ == "__main__":
     parser.add_argument("--tag", action = "store_true")
     parser.add_argument("--train_model", action = "store_true")
     parser.add_argument("--calc_eps", action = "store_true")
+    parser.add_argument("--pred_mal_labels", action = "store_true")
     parser.add_argument("--nn", choices = ['LeNet5','ResNet18', 'ResNet18-100'])
     parser.add_argument("--cuda_id", type = int)
     parser.add_argument("--eps_graph", action = "store_true")
@@ -299,3 +321,6 @@ if __name__ == "__main__":
         else:
             label = 1
         calcEps(pred_path, 0.01, label)
+
+    if args.pred_mal_labels:
+        getAdvExample(path, args.nn)
