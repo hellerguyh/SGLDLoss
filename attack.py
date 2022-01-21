@@ -136,8 +136,10 @@ class MetaDS(object):
         ds_size = len(ds)
         X = np.zeros((ds_size, 1))
         Y = np.zeros(ds_size)
+        softmax = torch.nn.Softmax(dim=0)
         for i, sample in enumerate(ds):
-            X[i][0] = sample['mal_pred_arr'][epoch][data_index]
+            x_prop = softmax(torch.tensor(sample['mal_pred_arr'][epoch]))
+            X[i][0] = x_prop[data_index].detach().numpy()
             # Y[i] = ds['tag'] == True
             if 'UNTAGGED' in sample['model_id']:
                 Y[i] = False
@@ -209,22 +211,26 @@ def plotEpsLB(eps_lb_arr, acc_arr, path, nn):
     plt.clf()
     plt.rcParams["font.family"] = "serif"
     fig, ax = plt.subplots()
-    ax.plot(eps_lb_arr, color = "Green")
-    ax.set_ylabel('$\epsilon_{lb}^{emp}$', color = "Green", fontsize = 14)
-    ax.set_xlabel("Epoch", fontsize = 14)
+    pt_1 = ax.plot(eps_lb_arr, color = "Green", label = '$\epsilon_{lb}^{emp}$')
+    ax.set_ylabel('$\epsilon_{lb}^{emp}$', color = "Green", fontsize = 9)
+    ax.set_xlabel("Epoch", fontsize = 9)
 
     ax2 = ax.twinx()
-    ax2.plot(acc_arr, color = "Black")
-    ax2.set_ylabel("Accuracy", color = "Black", fontsize = 14)
+    pt_2 = ax2.plot(acc_arr, color = "Black", label = 'accuracy')
+    ax2.set_ylabel("Accuracy", color = "Black", fontsize = 9)
+
+    lines, labels = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax2.legend(lines + lines2, labels + labels2, loc=0, fontsize = 9)
 
     if len(acc_arr) > 20:
         step = 5
     else:
         step = 2
-    plt.xticks(np.arange(0, len(acc_arr), step=step))
 
+    plt.xticks(np.arange(0, len(acc_arr), step=step))
     plt.grid()
-    plt.savefig(path + 'eps_lb' + str(nn) + '.png', dpi=300)
+    plt.savefig(path + 'eps_lb_prop_based_' + str(nn) + '.png', dpi=300)
 
 def calcEpsGraph(path, delta, label, epochs, nn):
     ds = MetaDS(path)
