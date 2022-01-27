@@ -15,6 +15,7 @@ import glob
 from data import getDL, nnType2DsName
 from nn import NoisyNN, SGLDOptim
 from train import train_model
+import numpy as np
 
 
 def _saveMeta(path, model_id, meta):
@@ -29,12 +30,21 @@ def _loadMeta(path):
 def collectMeta(path):
     tagged_l = glob.glob(path + "meta_TAGGED*")
     untagged_l = glob.glob(path + "meta_UNTAGGED*")
-    meta_files = tagged_l
-    meta_files.extend(untagged_l)
+
+    selection = np.random.randint(0,2,1100)
+    ti = 0
+    ui = 0
     metadata = []
-    for f in meta_files:
-        d = _loadMeta(f)
+    for s in selection:
+        if s == 0:
+            d = _loadMeta(untagged_l[ui])
+            ui += 1
+        else:
+            d = _loadMeta(tagged_l[ti])
+            ti += 1       
         metadata.append(d)
+    print("Using ", ui, " untagged models")
+    print("Using ", ti, " tagged models")
 
     return metadata
 
