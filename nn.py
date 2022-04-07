@@ -11,8 +11,10 @@ from torch.optim.optimizer import Optimizer, required
 import wandb
 
 class SGLDOptim(Optimizer):
-    def __init__(self, params, lr = required, cuda_device_id = 0):
+    def __init__(self, params, lr = required, cuda_device_id = 0,
+                 clipping = -1):
         self.cuda_device_id = cuda_device_id
+        self.clipping = clipping
         defaults = dict(lr = lr)
         super(SGLDOptim, self).__init__(params, defaults)
 
@@ -36,6 +38,8 @@ class SGLDOptim(Optimizer):
 
             for i, param in enumerate(params_with_grad):
                 d_p = d_p_list[i]
+                if self.clipping >= 0:
+                    d_p = d_p.div(max([d_p.norm(p=2)/self.clipping, 1]))
                 d_p = d_p.mul(data_size/(2*batch_size))
                 d_p = d_p.add(param, alpha = 0.5)
                 param.add_(d_p, alpha = -lr)

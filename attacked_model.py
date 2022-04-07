@@ -62,7 +62,8 @@ Trains a model and return it weights
 '''
 def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
                  save_model_path = None, model_id = None, use_wandb = False,
-                 wandb_run = None, nn_type = 'LeNet5', cuda_device_id = 0):
+                 wandb_run = None, nn_type = 'LeNet5', cuda_device_id = 0,
+                 clipping = -1):
 
         print("Creating victim with tag = " + str(tag))
         model = NoisyNN(nn_type)
@@ -84,7 +85,7 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         lr = lr_factor * (ds_size)**(-2)
 
         criterion = nn.CrossEntropyLoss(reduction = 'sum')
-        optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id)
+        optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping)
         scheduler = None
 
         meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
@@ -128,7 +129,7 @@ addAttackedModel() - adds an attacked model to the database
 @tag: if True use the tagged database
 '''
 def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
-                     path = None, lr_factor = -1, bs = -1):
+                     path = None, lr_factor = -1, bs = -1, clipping = -1):
     PARAMS = {}
     PARAMS['wandb_tags'] = ['LAB', 'VICTIM_CREATION']
     if lr_factor == -1:
@@ -176,7 +177,8 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
                              save_model_path = PATH,
                              model_id = PARAMS['model_id'],
                              use_wandb = True, wandb_run = wandb_run,
-                             nn_type = nn_type, cuda_device_id = cuda_id)
+                             nn_type = nn_type, cuda_device_id = cuda_id,
+                             clipping = clipping)
         with open (PATH + "params_" + PARAMS['model_id'] + ".json", 'w') as wf:
             json.dump(PARAMS, wf)
     return PARAMS['model_id']
