@@ -23,7 +23,7 @@ def runModel(model_ft, inputs, labels, loss_sum, corr_sum, device, criterion):
     _, preds = torch.max(outputs, 1)
     corr = torch.sum(preds == labels.data)
     corr_sum += corr.detach().item()
-    loss_sum += loss.detach().item()
+    loss_sum += loss.detach().sum().item()
     return loss, corr_sum, loss_sum
 
 def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, acc_arr, step):
@@ -70,7 +70,11 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
                                             loss_sum, corr_sum, device,
                                             criterion)
         if phase == 'train' and learn == True:
-            loss.backward()
+            for i, l in enumerate(loss):
+                if i < len(loss - 1):
+                    l.backward(retain_graph = True)
+                else:
+                    l.backward(retain_graph=False)
             optimizer.step(dl.batch_size, ds_size)
             step += 1
     if log:

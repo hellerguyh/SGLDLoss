@@ -10,6 +10,9 @@ import torchvision as tv
 from torch.optim.optimizer import Optimizer, required
 import wandb
 
+ResNet18Mask = [1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 0, 1]
+
+
 class SGLDOptim(Optimizer):
     def __init__(self, params, lr = required, cuda_device_id = 0,
                  clipping = -1):
@@ -30,16 +33,36 @@ class SGLDOptim(Optimizer):
             params_with_grad = []
             d_p_list = []
             lr = group['lr']
+            norms_list = []
+            
+            if self.clipping > 0:
+                acc_params = torch.tensor([0.0], device = device)
+                for p,m in zip(group['params'], ResNet18Mask):
+                    if p.grad is not None:
+                        acc_params = torch.cat([acc_params, p.grad.view(-1)])
+                    if m != 0:
+                        norm = acc_params.norm(p=2)
+                        acc_params = torch.tensor([0.0], device=device)
+                    for i in range(m):
+                        norms_list.append(norm)
 
-            for p in group['params']:
-                if p.grad is not None:
-                    params_with_grad.append(p)
-                    d_p_list.append(p.grad)
+            if self.clipping > 0:
+                grad_norm_list = []
+                for p, norm in zip(group['params'], norms_list):
+                    if p.grad is not None:
+                        params_with_grad.append(p)
+                        d_p_list.append(p.grad)
+                        grad_norm_list.append(norm)
+            else:
+                for p in group['params']:
+                    if p.grad is not None:
+                        params_with_grad.append(p)
+                        d_p_list.append(p.grad)
 
             for i, param in enumerate(params_with_grad):
                 d_p = d_p_list[i]
-                if self.clipping >= 0:
-                    d_p = d_p.div(max([d_p.norm(p=2)/self.clipping, 1]))
+                if self.clipping > 0:
+                    d_p = d_p.div(max([grad_norm_list[i]/self.clipping, 1]))
                 d_p = d_p.mul(data_size/(2*batch_size))
                 d_p = d_p.add(param, alpha = 0.5)
                 param.add_(d_p, alpha = -lr)

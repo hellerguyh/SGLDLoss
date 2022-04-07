@@ -84,7 +84,7 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         ds_size = t_dl.batch_size*len(t_dl)
         lr = lr_factor * (ds_size)**(-2)
 
-        criterion = nn.CrossEntropyLoss(reduction = 'sum')
+        criterion = nn.CrossEntropyLoss(reduction = "none")
         optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping)
         scheduler = None
 
@@ -165,7 +165,7 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
 
     PARAMS['wandb_tags'].append('LR_' + str(PARAMS['LR_FACTOR']))
 
-    with wandb.init(name='CreateVictim',\
+    with wandb.init(name='CreateVictim-clipping=' + str(clipping),\
            project = 'SGLDPrivacyLoss',\
            notes = 'Creating victims',\
            tags = PARAMS['wandb_tags'],\
