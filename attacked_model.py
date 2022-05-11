@@ -84,7 +84,10 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         ds_size = t_dl.batch_size*len(t_dl)
         lr = lr_factor * (ds_size)**(-2)
 
-        criterion = nn.CrossEntropyLoss(reduction = "none")
+        if clipping > 0:
+            criterion = nn.CrossEntropyLoss(reduction = "none")
+        else:
+            criterion = nn.CrossEntropyLoss(reduction = "sum")
         optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping)
         scheduler = None
 

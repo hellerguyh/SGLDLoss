@@ -70,11 +70,14 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
                                             loss_sum, corr_sum, device,
                                             criterion)
         if phase == 'train' and learn == True:
-            for i, l in enumerate(loss):
-                if i < len(loss - 1):
-                    l.backward(retain_graph = True)
-                else:
-                    l.backward(retain_graph=False)
+            if optimizer.clipping > 0:
+                for i, l in enumerate(loss):
+                    if i < len(loss - 1):
+                        l.backward(retain_graph = True)
+                    else:
+                        l.backward(retain_graph=False)
+            else:
+                loss.backward()
             optimizer.step(dl.batch_size, ds_size)
             step += 1
     if log:
