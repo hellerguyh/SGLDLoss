@@ -10,6 +10,7 @@ import torchvision as tv
 from torch.optim.optimizer import Optimizer, required
 import wandb
 from torch.nn.utils import clip_grad_norm_
+from nobn_resnet import nobn_resnet18
 
 ResNet18Mask = [1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 0, 1]
 
@@ -86,6 +87,8 @@ class NoisyNN(object):
             self.nn = tv.models.resnet34(pretrained = False, num_classes = 10)
         elif nn_type == 'ResNet18':
             self.nn = tv.models.resnet18(pretrained = False, num_classes = 10)
+        elif nn_type == 'ResNet18NoBN':
+            self.nn = nobn_resnet18(pretrained = False, num_classes = 10)
         elif nn_type == 'ResNet18-100':
             self.nn = tv.models.resnet18(pretrained = False, num_classes = 100)
         else:

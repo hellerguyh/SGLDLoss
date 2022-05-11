@@ -289,7 +289,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_model", action = "store_true")
     parser.add_argument("--calc_eps", action = "store_true")
     parser.add_argument("--pred_mal_labels", action = "store_true")
-    parser.add_argument("--nn", choices = ['LeNet5','ResNet18', 'ResNet18-100'])
+    parser.add_argument("--nn", choices = ['LeNet5','ResNet18', 'ResNet18-100', 'ResNet18NoBN'])
     parser.add_argument("--cuda_id", type = int)
     parser.add_argument("--eps_graph", action = "store_true")
     parser.add_argument("--repeat", type = int, default = 1)

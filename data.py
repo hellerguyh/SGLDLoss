@@ -102,6 +102,7 @@ class TagCIFAR100(torchvision.datasets.CIFAR100):
 nnType2DsName = {
     'LeNet5'    : 'MNIST',
     'ResNet18'  : 'CIFAR10',
+    'ResNet18NoBN'  : 'CIFAR10',
     'ResNet18-100'  : 'CIFAR100',
 }
 
