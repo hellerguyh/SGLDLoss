@@ -88,7 +88,7 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
             criterion = nn.CrossEntropyLoss(reduction = "none")
         else:
             criterion = nn.CrossEntropyLoss(reduction = "sum")
-        optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping)
+        optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping, nn_type)
         scheduler = None
 
         meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
