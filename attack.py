@@ -298,6 +298,8 @@ if __name__ == "__main__":
     parser.add_argument("--lr_factor", type = int, default = -1)
     parser.add_argument("--bs", type = int, default = -1)
     parser.add_argument("--clipping", type = float, default = -1)
+    parser.add_argument("--lr_milestones", nargs="+", type=float, default=None)
+    parser.add_argument("--lr_gamma", type=float, default=-1)
     args = parser.parse_args()
     if args.path == None:
         path = './trained_weights/' + args.nn + '/'
@@ -309,8 +311,15 @@ if __name__ == "__main__":
     if args.train_model:
         for i in range(args.repeat):
             print("Starting Attack " + str(i))
+            if args.lr_milestones:
+                assert args.lr_gamma != -1, "Must define lr_gamma"
+                lr_scheduling = {'milestones' : args.lr_milestones,
+                                 'gamma' : args.lr_gamma}
+            else:
+                lr_scheduling = None
             addAttackedModel(args.tag, args.nn, args.cuda_id, args.epochs,
-                             path, args.lr_factor, args.bs, args.clipping)
+                             path, args.lr_factor, args.bs, args.clipping,
+                             lr_scheduling)
 
     if args.eps_graph:
         if args.epochs == -1:

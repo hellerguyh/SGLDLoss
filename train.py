@@ -83,8 +83,8 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
 
 
 def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
-                score_fn, log = True, cuda_device_id = 0, do_mal_pred = False,
-                nn_type = 'LeNet5'):
+                score_fn, scheduler = None, log = True, cuda_device_id = 0,
+                do_mal_pred = False, nn_type = 'LeNet5'):
 
     phases = ['train']
     if validation:
@@ -133,6 +133,9 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
         if do_mal_pred:
             mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
             nonmal_pred_arr.append(_detachedPredict(model_ft, nonmal_img))
+
+        if not scheduler is None:
+            scheduler.step()
 
     meta = {
         'loss_arr'          : loss_arr,
