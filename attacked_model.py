@@ -15,6 +15,7 @@ import glob
 from data import getDL, nnType2DsName
 from nn import NoisyNN, SGLDOptim
 from train import train_model
+from utils import acc_score_fn
 import numpy as np
 
 
@@ -88,12 +89,13 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
             criterion = nn.CrossEntropyLoss(reduction = "none")
         else:
             criterion = nn.CrossEntropyLoss(reduction = "sum")
+        score_fn = acc_score_fn 
         optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping, nn_type)
         scheduler = None
 
         meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
-                           num_epochs, use_wandb, cuda_device_id, True,
-                           nn_type)
+                           num_epochs, score_fn, use_wandb, cuda_device_id,
+                           True, nn_type)
 
         meta['batch_size'] = bs
         meta['lr'] = lr,
@@ -176,7 +178,7 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
         PARAMS['model_id'] = getID(tag)
         model = createVictim(PARAMS['BS'], PARAMS['LR_FACTOR'], tag,
                              PARAMS['EPOCHS'],
-                             save_model = True,
+                             save_model = False,
                              save_model_path = PATH,
                              model_id = PARAMS['model_id'],
                              use_wandb = True, wandb_run = wandb_run,
