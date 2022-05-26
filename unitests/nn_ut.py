@@ -3,10 +3,12 @@ import numpy as np
 import os, sys
 import random
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from nn import *
 from data import getDL, nnType2DsName
 import torch.nn as tnn
+from torch.optim.lr_scheduler import MultiStepLR
 
 '''
 Testing SGLD Behaviour - We would like to check that the optimizer learns 
@@ -140,9 +142,39 @@ class TestNN(unittest.TestCase):
         pvalue = np.array(pvalue)
         self.assertAlmostEqual(np.std(pvalue), np.sqrt(lr), places=2)
 
+    def test_lr_scheduling(self):
+        network = tnn.Sequential(OrderedDict([
+            ('line1', nn.Linear(1, 1, bias=False))
+        ]))
+        network.line1.weight.data.copy_(torch.tensor(0))
+        bs = 1
+        alpha = 3
+        N = 10
+        lr = 0.1
+
+        optimizer = SGLDOptim(network.parameters(), lr, -1, -1, None,
+                              weight_decay=alpha)
+        milestons = [10,50]
+        gamma = 0.7
+        scheduler = MultiStepLR(optimizer, milestones=milestons, gamma=gamma)
+
+        T = 100
+        ms_idx = 0
+        for t in tqdm(range(T)):
+            for n in range(int(N/bs)):
+                optimizer.zero_grad()
+                optimizer.step(bs, N)
+            scheduler.step()
+            if t == milestons[ms_idx % len(milestons)]:
+                for group in optimizer.param_groups:
+                    self.assertAlmostEqual(lr*gamma, group['lr'], places=5)
+                ms_idx += 1
+                lr *= gamma
+
+
 class TestSGLD(unittest.TestCase):
+    @unittest.skip("test_sgld")
     def test_sgld(self):
-        from tqdm import tqdm
         network = tnn.Sequential(OrderedDict([
                                              ('line1', nn.Linear(1,1,bias=False))
                                              ]))

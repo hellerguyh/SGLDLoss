@@ -11,6 +11,7 @@ from time import gmtime, strftime
 import wandb
 import json, pickle
 import glob
+from torch.optim.lr_scheduler import MultiStepLR
 
 from data import getDL, nnType2DsName
 from nn import NoisyNN, SGLDOptim
@@ -64,7 +65,7 @@ Trains a model and return it weights
 def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
                  save_model_path = None, model_id = None, use_wandb = False,
                  wandb_run = None, nn_type = 'LeNet5', cuda_device_id = 0,
-                 clipping = -1):
+                 clipping = -1, lr_scheduling = None):
 
         print("Creating victim with tag = " + str(tag))
         model = NoisyNN(nn_type)
@@ -91,11 +92,14 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
             criterion = nn.CrossEntropyLoss(reduction = "sum")
         score_fn = acc_score_fn 
         optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping, nn_type)
-        scheduler = None
+        if not lr_scheduling is None:
+            scheduler = MultiStepLR(optimizer, milestones=lr_scheduling['milestones'], gamma=lr_scheduling['gamma'])
+        else:
+            scheduler = None
 
         meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
-                           num_epochs, score_fn, use_wandb, cuda_device_id,
-                           True, nn_type)
+                           num_epochs, score_fn, scheduler, use_wandb,
+                           cuda_device_id, True, nn_type)
 
         meta['batch_size'] = bs
         meta['lr'] = lr,
@@ -134,7 +138,7 @@ addAttackedModel() - adds an attacked model to the database
 @tag: if True use the tagged database
 '''
 def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
-                     path = None, lr_factor = -1, bs = -1, clipping = -1):
+                     path = None, lr_factor = -1, bs = -1, clipping = -1, lr_scheduling = None):
     PARAMS = {}
     PARAMS['wandb_tags'] = ['LAB', 'VICTIM_CREATION']
     if lr_factor == -1:
@@ -167,6 +171,9 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
         PARAMS['wandb_tags'].append('TAGGED_DATABASE')
     else:
         PARAMS['wandb_tags'].append('UNTAGGED_DATABASE')
+    if not lr_scheduling is None:
+        PARAMS['wandb_tags'].append('LR_SCHEUDLER_' + str(lr_scheduling['milestones'])
+                                    + "_" + str(lr_scheduling['gamma']))
 
     PARAMS['wandb_tags'].append('LR_' + str(PARAMS['LR_FACTOR']))
 
@@ -174,7 +181,8 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
            project = 'SGLDPrivacyLoss',\
            notes = 'Creating victims',\
            tags = PARAMS['wandb_tags'],\
-           entity = 'hellerguyh') as wandb_run:
+           entity = 'hellerguyh',
+           config = PARAMS) as wandb_run:
         PARAMS['model_id'] = getID(tag)
         model = createVictim(PARAMS['BS'], PARAMS['LR_FACTOR'], tag,
                              PARAMS['EPOCHS'],
@@ -183,7 +191,7 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
                              model_id = PARAMS['model_id'],
                              use_wandb = True, wandb_run = wandb_run,
                              nn_type = nn_type, cuda_device_id = cuda_id,
-                             clipping = clipping)
+                             clipping = clipping, lr_scheduling=lr_scheduling)
         with open (PATH + "params_" + PARAMS['model_id'] + ".json", 'w') as wf:
             json.dump(PARAMS, wf)
     return PARAMS['model_id']
