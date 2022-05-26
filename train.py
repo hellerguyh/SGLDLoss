@@ -14,28 +14,12 @@ def logProgress(num_batches):
             print("Finished " + str(idx*100/num_batches) + "%")
         yield None            
 
-def runModel(model_ft, inputs, labels, loss_sum, corr_sum, device, criterion):
-    inputs = inputs.to(device)
-    labels = labels.to(device)
-
-    outputs = model_ft(inputs)
-    loss = criterion(outputs, labels)
-    _, preds = torch.max(outputs, 1)
-    corr = torch.sum(preds == labels.data)
-    corr_sum += corr.detach().item()
-    loss_sum += loss.detach().sum().item()
-    return loss, corr_sum, loss_sum
-
-def logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr, acc_arr, step):
-    epoch_loss = loss_sum / ds_size 
-    epoch_acc = float(corr_sum) / ds_size
-    loss_arr[phase].append(epoch_loss)
-    acc_arr[phase].append(epoch_acc)
-    print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-           phase, epoch_loss, epoch_acc))
-    wandb.log({"Epoch" : len(loss_arr[phase]),
-                phase + " Loss" : epoch_loss,
-                phase + " Accuracy" : epoch_acc},
+def logEpochResult(avg_epoch_loss, avg_epoch_score, epoch, step, phase):
+    print('{} Loss: {:.4f} Score(Acc or Err): {:.4f}'.format(
+           phase, avg_epoch_loss, avg_epoch_score))
+    wandb.log({"Epoch" : epoch,
+                phase + " Loss" : avg_epoch_loss,
+                phase + " Score" : avg_epoch_score},
                 step = step)
 
 def _detachedPredict(model_ft, img):
@@ -46,8 +30,18 @@ def _detachedPredict(model_ft, img):
         pred = list(pred.detach().numpy()[0])
         return pred
 
+def loss_backward(optimizer, loss):
+    if optimizer.clipping > 0:
+        for i, l in enumerate(loss):
+            if i < len(loss - 1):
+                l.backward(retain_graph = True)
+            else:
+                l.backward(retain_graph = False)
+    else:
+        loss.backward()
+
 def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
-             loss_arr, acc_arr, step, learn):
+             loss_arr, score_arr, step, learn, score_fn):
     dl = dataloaders[phase]
     ds_size = dl.batch_size*len(dl)
     if phase == 'train':
@@ -55,39 +49,41 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
     else:
         model_ft.eval()
 
-    if phase == 'train':
+    if phase == 'train' and log:
         logger_itr = logProgress(len(dl))
     loss_sum = 0
-    corr_sum = 0
+    score_sum = 0
     grad_pos_cntr = 0
     for inputs, labels in dl:
-        if phase == 'train':
+        if phase == 'train' and log:
             next(logger_itr)
 
         optimizer.zero_grad()
 
-        loss, corr_sum, loss_sum = runModel(model_ft, inputs, labels,
-                                            loss_sum, corr_sum, device,
-                                            criterion)
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+        outputs = model_ft(inputs)
+        loss = criterion(outputs, labels)
+        score_sum += score_fn(outputs, labels)
+        loss_sum += loss.detach().sum().item()
+
         if phase == 'train' and learn == True:
-            if optimizer.clipping > 0:
-                for i, l in enumerate(loss):
-                    if i < len(loss - 1):
-                        l.backward(retain_graph = True)
-                    else:
-                        l.backward(retain_graph=False)
-            else:
-                loss.backward()
+            loss_backward(optimizer, loss)
             optimizer.step(dl.batch_size, ds_size)
             step += 1
+
+    avg_epoch_loss = loss_sum / ds_size
+    avg_epoch_score = float(score_sum) / ds_size
+    loss_arr[phase].append(avg_epoch_loss)
+    score_arr[phase].append(avg_epoch_score)
     if log:
-        logEpochResult(loss_sum, corr_sum, ds_size, phase, loss_arr,
-                       acc_arr, step)
+        logEpochResult(avg_epoch_loss, avg_epoch_score, len(loss_arr[phase]),
+                       step, phase)
     return step
 
 
 def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
-                log = True, cuda_device_id = 0, do_mal_pred = False,
+                score_fn, log = True, cuda_device_id = 0, do_mal_pred = False,
                 nn_type = 'LeNet5'):
 
     phases = ['train']
@@ -108,7 +104,7 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
     mal_pred_arr = []
     nonmal_pred_arr = []
     loss_arr = {'train':[],'val':[]}
-    acc_arr = {'train':[],'val':[]}
+    score_arr = {'train':[],'val':[]}
     step = 0
 
     if do_mal_pred:
@@ -120,9 +116,9 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
         nonmal_pred_arr.append(_detachedPredict(model_ft, nonmal_img))
 
     runPhase('train', dataloaders, model_ft, optimizer, device, log,
-             criterion, loss_arr, acc_arr, step, False)
+             criterion, loss_arr, score_arr, step, False, score_fn)
     runPhase('val', dataloaders, model_ft, optimizer, device, log,
-             criterion, loss_arr, acc_arr, step, False)
+             criterion, loss_arr, score_arr, step, False, score_fn)
 
     step = 1
     for epoch in range(num_epochs):
@@ -131,7 +127,8 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
 
         for phase in phases:
             step = runPhase(phase, dataloaders, model_ft, optimizer, device,
-                            log, criterion, loss_arr, acc_arr, step, True)
+                            log, criterion, loss_arr, score_arr, step, True,
+                            score_fn)
 
         if do_mal_pred:
             mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
@@ -139,7 +136,7 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
 
     meta = {
         'loss_arr'          : loss_arr,
-        'acc_arr'           : acc_arr,
+        'score_arr'         : score_arr,
         'mal_pred_arr'      : mal_pred_arr,
         'nonmal_pred_arr'   : nonmal_pred_arr
     }
