@@ -141,20 +141,19 @@ class TestNN(unittest.TestCase):
         self.assertAlmostEqual(np.std(pvalue), np.sqrt(lr), places=2)
 
 class TestSGLD(unittest.TestCase):
-    def test_gld(self):
+    def test_sgld(self):
         from tqdm import tqdm
         network = tnn.Sequential(OrderedDict([
                                              ('line1', nn.Linear(1,1,bias=False))
                                              ]))
         network.line1.weight.data.copy_(torch.tensor(0))
-        #lr = 0.00001
         bs = 1
         alpha = 3
         beta = 2
         N = 100
         x = torch.tensor([1], dtype=torch.float)
         y = torch.tensor([10], dtype=torch.float)
-        lr = 1 / (alpha + N * x.detach().item() ** 2 * beta) ** 2
+        #lr = 1 / (alpha + N * x.detach().item() ** 2 * beta) ** 2
         lr = 0.001
         print(lr)
 
@@ -178,7 +177,7 @@ class TestSGLD(unittest.TestCase):
         with self.subTest(msg='Mean check'):
             self.assertAlmostEqual(np.mean(w_arr), posterior_mean, places=2)
         with self.subTest(msg='Var check'):
-            self.assertAlmostEqual(np.var(w_arr), posterior_var, places=2)
+            self.assertAlmostEqual(np.var(w_arr), posterior_var, places=3)
         print("Mean: Approximated ", np.mean(w_arr), " Posterior ", posterior_mean)
         print("Mean: Approximated ", np.var(w_arr), " Posterior ", posterior_var)
 
