@@ -142,6 +142,7 @@ class TestNN(unittest.TestCase):
         pvalue = np.array(pvalue)
         self.assertAlmostEqual(np.std(pvalue), np.sqrt(lr), places=2)
 
+    @unittest.skip("skipping test_lr_scheduling")
     def test_lr_scheduling(self):
         network = tnn.Sequential(OrderedDict([
             ('line1', nn.Linear(1, 1, bias=False))
@@ -173,23 +174,23 @@ class TestNN(unittest.TestCase):
 
 
 class TestSGLD(unittest.TestCase):
-    @unittest.skip("test_sgld")
-    def test_sgld(self):
+    def _test_sgld(self, bs, alpha, beta, cid = 0):
         network = tnn.Sequential(OrderedDict([
                                              ('line1', nn.Linear(1,1,bias=False))
                                              ]))
+        device = torch.device("cuda:" + str(cid)
+                              if torch.cuda.is_available() else "cpu")
         network.line1.weight.data.copy_(torch.tensor(0))
-        bs = 1
-        alpha = 3
-        beta = 2
         N = 100
-        x = torch.tensor([1], dtype=torch.float)
-        y = torch.tensor([10], dtype=torch.float)
-        #lr = 1 / (alpha + N * x.detach().item() ** 2 * beta) ** 2
+        x_v = 1
+        y_v = 10
+        x = torch.ones([bs, 1], dtype=torch.float, device = device)*x_v
+        y = torch.ones([bs, 1], dtype=torch.float, device = device)*y_v
+        network.to(device)
         lr = 0.001
         print(lr)
 
-        optimizer = SGLDOptim(network.parameters(), lr, -1, -1, None,
+        optimizer = SGLDOptim(network.parameters(), lr, cid, -1, None,
                               weight_decay=alpha)
         criterion = BLRL(alpha, beta)
 
@@ -202,17 +203,30 @@ class TestSGLD(unittest.TestCase):
             loss.backward()
             optimizer.step(bs, N)
             if T > 800000:
-                w_arr.append(network.line1.weight.data.detach().item())
+                w_arr.append(network.line1.weight.data.detach().cpu().item())
         w_arr = np.array(w_arr)
-        posterior_mean = N*x.item()*y.item()*beta/(alpha + N*x.item()**2*beta)
-        posterior_var = 1/(alpha + N*x.item()**2*beta)
+        posterior_mean = N*x_v*y_v*beta/(alpha + N*x_v**2*beta)
+        posterior_var = 1/(alpha + N*x_v**2*beta)
         with self.subTest(msg='Mean check'):
             self.assertAlmostEqual(np.mean(w_arr), posterior_mean, places=2)
         with self.subTest(msg='Var check'):
             self.assertAlmostEqual(np.var(w_arr), posterior_var, places=3)
         print("Mean: Approximated ", np.mean(w_arr), " Posterior ", posterior_mean)
-        print("Mean: Approximated ", np.var(w_arr), " Posterior ", posterior_var)
+        print("Variance: Approximated ", np.var(w_arr), " Posterior ", posterior_var)
 
+    @unittest.skip("test_sgld_simple")
+    def test_sgld_simple(self):
+        bs = 1
+        alpha = 3
+        beta = 2
+        self._test_sgld(bs, alpha, beta)
+
+    #@unittest.skip("test_sgld_bs")
+    def test_sgld_bs(self):
+        bs = 32
+        alpha = 3
+        beta = 2
+        self._test_sgld(bs, alpha, beta)
 
 
 if __name__ == '__main__':
