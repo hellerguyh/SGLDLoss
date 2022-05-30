@@ -12,6 +12,7 @@ import wandb
 import json, pickle
 import glob
 from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim import SGD
 
 from data import getDL, nnType2DsName
 from nn import NoisyNN, SGLDOptim
@@ -84,14 +85,15 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         v_dl = getDL(bs, False, db_name, tag)
 
         ds_size = t_dl.batch_size*len(t_dl)
-        lr = lr_factor * (ds_size)**(-2)
+        lr = lr_factor #* (ds_size)**(-2)
 
         if clipping > 0:
             criterion = nn.CrossEntropyLoss(reduction = "none")
         else:
-            criterion = nn.CrossEntropyLoss(reduction = "sum")
+            criterion = nn.CrossEntropyLoss(reduction = "mean")
         score_fn = acc_score_fn 
-        optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping, nn_type)
+        #optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping, nn_type)
+        optimizer = SGD(model_ft.parameters(), lr)
         if not lr_scheduling is None:
             scheduler = MultiStepLR(optimizer, milestones=lr_scheduling['milestones'], gamma=lr_scheduling['gamma'])
         else:
@@ -177,8 +179,8 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
 
     PARAMS['wandb_tags'].append('LR_' + str(PARAMS['LR_FACTOR']))
 
-    with wandb.init(name='CreateVictim-clipping=' + str(clipping),\
-           project = 'SGLDPrivacyLoss',\
+    with wandb.init(name='SGD-Test' + str(clipping),\
+           project = 'SGLDPrivacyLossV2',\
            notes = 'Creating victims',\
            tags = PARAMS['wandb_tags'],\
            entity = 'hellerguyh',

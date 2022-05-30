@@ -6,7 +6,7 @@ import wandb
 from PIL import Image
 import numpy as np
 
-CODE_TEST = False
+CODE_TEST = False 
 
 
 class TagMNIST(torchvision.datasets.MNIST):
@@ -128,9 +128,19 @@ def getDS(ds_name, tag):
     return db
 
 
-def getTransforms():
-    return torchvision.transforms.Compose([torchvision.transforms.Resize((32, 32)),
-                                           torchvision.transforms.ToTensor()])
+def getTransforms(train = True):
+    if not train:
+        return torchvision.transforms.Compose([
+                                  torchvision.transforms.ToTensor(),
+                                  torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                                 ])
+    else:
+        return torchvision.transforms.Compose([
+                                      torchvision.transforms.RandomCrop(32, padding=4),
+                                      torchvision.transforms.RandomHorizontalFlip(),
+                                      torchvision.transforms.ToTensor(),
+                                      torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                                      ])
 
 '''
 getDL - gets a dataloader without going through wandb.config
@@ -143,7 +153,7 @@ def getDL(bs, train, ds_name, tag = False):
     db = getDS(ds_name, tag)
     data = db(root = './dataset/',
               train = train, download = True,
-              transform = getTransforms())
+              transform = getTransforms(train))
 
     if CODE_TEST:
         subset = list(range(0,len(data), int(len(data)/1000)))
@@ -178,7 +188,7 @@ def getImg(nn_type = 'LeNet5', tag = False):
     # does in training
     ds_class = getDS(nnType2DsName[nn_type], tag)
     ds = ds_class(root = "./dataset/", train = True, download = True,
-                  transform = getTransforms())
+                  transform = getTransforms(True))
 
     img = _sampleToImg(ds[0])
     return img
@@ -186,7 +196,7 @@ def getImg(nn_type = 'LeNet5', tag = False):
 def getMalLabels(nn_type):
     ds_class = getDS(nnType2DsName[nn_type], True)
     ds = ds_class(root = "./dataset/", train = True, download = True,
-                  transform = getTransforms())
+                  transform = getTransforms(True))
     return ds._getMalLabels()
 
 if __name__ == "__main__":

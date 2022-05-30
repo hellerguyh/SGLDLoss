@@ -31,14 +31,7 @@ def _detachedPredict(model_ft, img):
         return pred
 
 def loss_backward(optimizer, loss):
-    if optimizer.clipping > 0:
-        for i, l in enumerate(loss):
-            if i < len(loss - 1):
-                l.backward(retain_graph = True)
-            else:
-                l.backward(retain_graph = False)
-    else:
-        loss.backward()
+    loss.backward()
 
 def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
              loss_arr, score_arr, step, learn, score_fn):
@@ -69,7 +62,8 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
 
         if phase == 'train' and learn == True:
             loss_backward(optimizer, loss)
-            optimizer.step(dl.batch_size, ds_size)
+            #optimizer.step(dl.batch_size, ds_size)
+            optimizer.step()
             step += 1
 
     avg_epoch_loss = loss_sum / ds_size
