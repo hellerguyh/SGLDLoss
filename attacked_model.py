@@ -11,7 +11,7 @@ from time import gmtime, strftime
 import wandb
 import json, pickle
 import glob
-from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import MultiStepLR, CosineAnnealingLR
 
 from data import getDL, nnType2DsName
 from nn import NoisyNN, SGLDOptim
@@ -93,7 +93,10 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         score_fn = acc_score_fn 
         optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping, nn_type)
         if not lr_scheduling is None:
-            scheduler = MultiStepLR(optimizer, milestones=lr_scheduling['milestones'], gamma=lr_scheduling['gamma'])
+            if lr_scheduling['type'] == 'StepLR':
+                scheduler = MultiStepLR(optimizer, milestones=lr_scheduling['milestones'], gamma=lr_scheduling['gamma'])
+            else:
+                scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs)
         else:
             scheduler = None
 
@@ -177,7 +180,7 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
 
     PARAMS['wandb_tags'].append('LR_' + str(PARAMS['LR_FACTOR']))
 
-    with wandb.init(name='CreateVictim-clipping=' + str(clipping),\
+    with wandb.init(name='CreateVictim',\
            project = 'SGLDPrivacyLoss',\
            notes = 'Creating victims',\
            tags = PARAMS['wandb_tags'],\
