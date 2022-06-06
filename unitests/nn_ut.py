@@ -194,7 +194,7 @@ class TestSGLD(unittest.TestCase):
                               weight_decay=alpha)
         criterion = BLRL(alpha, beta)
 
-        T = 1000000
+        T = 100000
         w_arr = []
         for t in tqdm(range(T)):
             optimizer.zero_grad()
@@ -202,7 +202,7 @@ class TestSGLD(unittest.TestCase):
             loss = criterion(pred, y)
             loss.backward()
             optimizer.step(bs, N)
-            if T > 800000:
+            if t > 90000:
                 w_arr.append(network.line1.weight.data.detach().cpu().item())
         w_arr = np.array(w_arr)
         posterior_mean = N*x_v*y_v*beta/(alpha + N*x_v**2*beta)
@@ -214,14 +214,28 @@ class TestSGLD(unittest.TestCase):
         print("Mean: Approximated ", np.mean(w_arr), " Posterior ", posterior_mean)
         print("Variance: Approximated ", np.var(w_arr), " Posterior ", posterior_var)
 
-    @unittest.skip("test_sgld_simple")
+    @unittest.skip("test_posterior")
+    def test_posterior(self):
+        alpha = 1
+        beta = 3
+        eta = 0.0001
+        N = 100
+        x_v = 1
+        lmbda = 1 - eta/2*(alpha + N*x_v**2*beta)
+        post_var = eta*(1-lmbda**10000)/(1-lmbda**2)
+        posterior_var = 1/(alpha + N*x_v**2*beta)
+        self.assertAlmostEqual(post_var, posterior_var, places=3)
+        print(posterior_var)
+        print(post_var)
+
+    #@unittest.skip("test_sgld_simple")
     def test_sgld_simple(self):
         bs = 1
-        alpha = 3
-        beta = 2
+        alpha = 1
+        beta = 3
         self._test_sgld(bs, alpha, beta)
 
-    #@unittest.skip("test_sgld_bs")
+    @unittest.skip("test_sgld_bs")
     def test_sgld_bs(self):
         bs = 32
         alpha = 3

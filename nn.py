@@ -60,13 +60,13 @@ class SGLDOptim(Optimizer):
 
             for i, param in enumerate(params_with_grad):
                 d_p = d_p_list[i]
-                d_p = d_p.mul(data_size/(2*batch_size))
-                d_p = d_p.add(param, alpha = 0.5*self.weight_decay)
-                param.add_(d_p, alpha = -lr)
+                d_p = d_p.mul(data_size/(batch_size))
+                d_p = d_p.add(param, alpha = self.weight_decay)
+                param.add_(d_p, alpha = -lr/2)
 
                 sigma = 1
-                mean = torch.zeros(param.shape)
-                noise = torch.normal(mean, sigma).to(device)
+                #mean = torch.zeros(param.shape)
+                noise = torch.normal(0, sigma, param.shape, device=device)
                 param.add_(noise, alpha = np.sqrt(lr))
 
 #http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf
