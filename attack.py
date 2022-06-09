@@ -134,12 +134,13 @@ class MetaDS(object):
 
     def _getMalPred(self, ds, epoch, data_index):
         ds_size = len(ds)
-        X = np.zeros((ds_size, 1))
+        X = np.zeros((ds_size, len(data_index)))
         Y = np.zeros(ds_size)
         softmax = torch.nn.Softmax(dim=0)
         for i, sample in enumerate(ds):
-            x_prop = softmax(torch.tensor(sample['mal_pred_arr'][epoch]))
-            X[i][0] = x_prop[data_index].detach().numpy()
+            x_prop = softmax(torch.tensor(sample['mal_pred_arr'][epoch])).detach().numpy()
+            for k, j in enumerate(data_index):
+                X[i][k] = x_prop[j]
             # Y[i] = ds['tag'] == True
             if 'UNTAGGED' in sample['model_id']:
                 Y[i] = False
@@ -198,7 +199,7 @@ def get_eps_lower_bound(FN, FP, pos, negs, delta):
     return np.max([v1, v2, 0])
 
 def get_emp_eps(FN_rate, FP_rate, delta):
-    if (FN_rate == 0 and FP_rate == 1) or (FP_rate == 0 and FN_rate == 1):
+    if (FN_rate == 0 and FP_rate >= 0.7) or (FP_rate == 0 and FN_rate >= 0.7):
         emp_eps = 0
     elif FN_rate == 0 or FP_rate == 0:
         emp_eps = MAX_EPS
@@ -271,8 +272,9 @@ def calcEps(path, delta, label):
     X, Y = predictions2Dataset(path, [label])
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.9,
                                                        random_state = 0)
-    clf = make_pipeline(StandardScaler(),
-                        SGDClassifier(max_iter=1000, tol=1e-3))
+    #clf = make_pipeline(StandardScaler(),
+    #                    SGDClassifier(max_iter=1000, tol=1e-3))
+    clf = make_pipeline(SGDClassifier(max_iter=1000, tol=1e-3))
     clf.fit(X_train, Y_train)
     P = clf.predict(X_test)
     FN_rate, FP_rate = getStats(P, Y_test)
@@ -328,18 +330,18 @@ if __name__ == "__main__":
         if args.epochs == -1:
             raise Exception("need argument epochs")
         if args.nn == 'LeNet5':
-            label = 8
+            label = [8]
         else:
-            label = 1
+            label = list(range(10))#1
         calcEpsGraph(path, 10**(-5), label, args.epochs, args.nn)
 
     if args.calc_eps:
         pred_path = args.nn + "_Dictionary.pkl"
         weightsToPredictions(path, pred_path, args.nn)
         if args.nn == 'LeNet5':
-            label = 8
+            label = [8]
         else:
-            label = 1
+            label = list(range(10))#1
         calcEps(pred_path, 0.01, label)
 
     if args.pred_mal_labels:
