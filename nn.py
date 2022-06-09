@@ -9,25 +9,14 @@ import copy
 import torchvision as tv
 from torch.optim.optimizer import Optimizer, required
 import wandb
-from torch.nn.utils import clip_grad_norm_
 from nobn_resnet import nobn_resnet18
-
-ResNet18Mask = [1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 0, 1]
-ResNet18NoBNMask = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1]
 
 class SGLDOptim(Optimizer):
     def __init__(self, params, lr = required, cuda_device_id = 0,
-                 clipping = -1, nn_type = 'ResNet18', weight_decay = 1):
+                 nn_type = 'ResNet18', weight_decay = 1):
         self.cuda_device_id = cuda_device_id
-        self.clipping = clipping
         self.nn_type = nn_type
         self.weight_decay = weight_decay
-        if nn_type == 'ResNet18' or nn_type == 'ResNet18-100':
-            self.clipping_mask = ResNet18Mask
-        elif nn_type == 'ResNet18NoBN':
-            self.clipping_mask = ResNet18NoBNMask
-        elif clipping > 0:
-            raise NotImplementedError(str(self.nn_type))
         defaults = dict(lr = lr)
         super(SGLDOptim, self).__init__(params, defaults)
 
@@ -43,15 +32,6 @@ class SGLDOptim(Optimizer):
             params_with_grad = []
             d_p_list = []
             lr = group['lr']
-
-            if self.clipping > 0:
-                acc_params = [] 
-                for p,m in zip(group['params'], self.clipping_mask):
-                    if p.grad is not None:
-                        acc_params.append(p)
-                    if m != 0:
-                        clip_grad_norm_(acc_params, self.clipping)
-                        acc_params = [] 
 
             for p in group['params']:
                 if p.grad is not None:

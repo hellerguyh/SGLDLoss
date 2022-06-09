@@ -82,9 +82,7 @@ class Test_train_model(unittest.TestCase):
 
     def test_mal_predictions(self):
         pass
-    
-    def test_clipping(self):
-        pass
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,6 @@
 import torch
 import wandb
 from data import *
-from torch.nn.utils import clip_grad_value_
 
 def logProgress(num_batches):
     idx = 0
@@ -29,16 +28,6 @@ def _detachedPredict(model_ft, img):
         pred = pred.to("cpu")
         pred = list(pred.detach().numpy()[0])
         return pred
-
-def loss_backward(optimizer, loss):
-    if optimizer.clipping > 0:
-        for i, l in enumerate(loss):
-            if i < len(loss - 1):
-                l.backward(retain_graph = True)
-            else:
-                l.backward(retain_graph = False)
-    else:
-        loss.backward()
 
 def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
              loss_arr, score_arr, step, learn, score_fn):
@@ -68,7 +57,7 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
         loss_sum += loss.detach().sum().item()
 
         if phase == 'train' and learn == True:
-            loss_backward(optimizer, loss)
+            loss.backward()
             optimizer.step(dl.batch_size, ds_size)
             step += 1
 

@@ -86,12 +86,9 @@ def createVictim(bs, lr_factor, tag, num_epochs = 10, save_model = False,
         ds_size = t_dl.batch_size*len(t_dl)
         lr = lr_factor * (ds_size)**(-2)
 
-        if clipping > 0:
-            criterion = nn.CrossEntropyLoss(reduction = "none")
-        else:
-            criterion = nn.CrossEntropyLoss(reduction = "sum")
+        criterion = nn.CrossEntropyLoss(reduction = "sum")
         score_fn = acc_score_fn 
-        optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, clipping, nn_type)
+        optimizer = SGLDOptim(model_ft.parameters(), lr, cuda_device_id, nn_type)
         if not lr_scheduling is None:
             if lr_scheduling['type'] == 'StepLR':
                 scheduler = MultiStepLR(optimizer, milestones=lr_scheduling['milestones'], gamma=lr_scheduling['gamma'])
