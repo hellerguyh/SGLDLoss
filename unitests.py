@@ -60,5 +60,31 @@ def smallTest():
         model.nn.eval()
         print(model.nn(ml_sample))
 
+def showHistogramFromPredictions(path, epoch):
+    ds = MetaDS(path)
+    X, _, Y, _ = ds.getMalPred(epoch, list(range(10)))
+    Y = np.array(Y)
+    mask = np.ma.masked_where(Y == 1, X)
+    tagged_predictions = np.ma.compressed(mask)
+    mask = np.ma.masked_where(Y == 0, X)
+    untagged_predictions = np.ma.compressed(mask)
+    print(untagged_predictions)
+    print(tagged_predictions)
+    minimum = math.floor(min([min(tagged_predictions), min(untagged_predictions)]))
+    maximum = max([max(tagged_predictions), max(untagged_predictions)])
+    bins = np.linspace(minimum, maximum, 100)  # fixed number of bins
+    plt.xlim([minimum, maximum])
+    plt.hist([tagged_predictions, untagged_predictions], label=['tagged','untagged'], bins=bins)
+    plt.legend()
+    plt.show()
+
+
 if __name__ == "__main__":
     showHistogram("ResNet18_Dictionary.pkl", [1])
+    import argparse
+    parser = argparse.ArgumentParser(description="Small Tests")
+    parser.add_argument("--path", type=str, default=None)
+    parser.add_argument("--epoch", type=int, default=-1)
+    args = parser.parse_args()
+
+    showHistogramFromPredictions(args.path, args.epoch)
