@@ -124,7 +124,7 @@ class TestNN(unittest.TestCase):
         criterion = nn.CrossEntropyLoss(reduction = "sum")
         db_name = nnType2DsName[nn_type]
         t_dl = getDL(bs, True, db_name, False)
-        ds_size = t_dl.batch_size * len(t_dl)
+        ds_size = t_dl.ds_size
         T = 10
         name, pos_list = self.selectNetworkParams(network.nn)
         netp = dict(network.nn.named_parameters())

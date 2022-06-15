@@ -297,12 +297,17 @@ if __name__ == "__main__":
     parser.add_argument("--repeat", type = int, default = 1)
     parser.add_argument("--epochs", type = int, default = -1)
     parser.add_argument("--path", type = str, default = None)
-    parser.add_argument("--lr_factor", type = float, default = -1)
+    parser.add_argument("--lr_factor", type = float, default = -1, help =
+                        "SGLD lr will be lr_factor*|dataset|**(-2), only available"\
+                        "when clipping is not active")
+    parser.add_argument("--lr", type = float, default = -1, help = "learning rate"\
+                        "when clipping is active")
     parser.add_argument("--bs", type = int, default = -1)
     parser.add_argument("--clipping", type = float, default = -1)
-    parser.add_argument("--lr_type", type=str, default=None, choices = ['StepLR', 'Cosine'])
-    parser.add_argument("--lr_milestones", nargs="+", type=float, default=None)
-    parser.add_argument("--lr_gamma", type=float, default=-1)
+    parser.add_argument("--lr_sched_type", type=str, default=None, choices = ['StepLR', 'Cosine'])
+    parser.add_argument("--lr_sched_milestones", nargs="+", type=float, default=None)
+    parser.add_argument("--lr_sched_gamma", type=float, default=-1)
+    parser.add_argument("--delta", type=float, default=10**(-5))
     args = parser.parse_args()
     if args.path == None:
         path = './trained_weights/' + args.nn + '/'
@@ -312,19 +317,26 @@ if __name__ == "__main__":
         path = args.path
 
     if args.train_model:
+        assert (args.clipping > -1 and args.lr > -1) or (args.clipping == -1 and
+                args.lr == -1), "Either clipping and lr both set or unset"
+        assert (args.clipping > -1 and args.lr_factor == -1) or (args.clipping == -1 and
+                args.lr_factor > -1), "Clipping and lr_factor are mutually exclusive"
+
+        if args.clipping > -1 and not torch.cuda.is_available():
+            torch.multiprocessing.set_sharing_strategy('file_system')
         for i in range(args.repeat):
             print("Starting Attack " + str(i))
-            if args.lr_type:
-                if args.lr_type == 'StepLR':
-                    assert (not args.lr_milestons is None) and (args.lr_gamma != -1)
-                lr_scheduling = {'type' : args.lr_type,
-                                 'milestones' : args.lr_milestones,
-                                 'gamma' : args.lr_gamma}
+            if args.lr_sched_type:
+                if args.lr_sched_type == 'StepLR':
+                    assert (not args.lr_sched_milestons is None) and (args.lr_sched_gamma != -1)
+                lr_scheduling = {'type' : args.lr_sched_type,
+                                 'milestones' : args.lr_sched_milestones,
+                                 'gamma' : args.lr_sched_gamma}
             else:
                 lr_scheduling = None
             addAttackedModel(args.tag, args.nn, args.cuda_id, args.epochs,
                              path, args.lr_factor, args.bs, args.clipping,
-                             lr_scheduling)
+                             lr_scheduling, args.lr, args.delta)
 
     if args.eps_graph:
         if args.epochs == -1:

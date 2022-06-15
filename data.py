@@ -1,6 +1,7 @@
 import torch
 import torchvision
 from torch.utils.data import DataLoader
+from opacus.utils.uniform_sampler import UniformWithReplacementSampler
 import wandb
 
 from PIL import Image
@@ -139,7 +140,7 @@ getDL - gets a dataloader without going through wandb.config
 @ds_name: MNIST/CIFAR10/...
 @tag: if True uses the TagMNIST database (only relevant for ds_name = MNIST)
 '''
-def getDL(bs, train, ds_name, tag = False):
+def getDL(bs, train, ds_name, tag = False, w_batch_sampler = False):
     db = getDS(ds_name, tag)
     data = db(root = './dataset/',
               train = train, download = True,
@@ -155,8 +156,23 @@ def getDL(bs, train, ds_name, tag = False):
     else:
         NW = 4
 
-    loader = torch.utils.data.DataLoader(data, batch_size = bs, shuffle = True,
-                                         num_workers = NW, pin_memory = True)
+    if w_batch_sampler:
+        assert train, "Batch sampling should only happen in training"
+        sample_rate = float(bs/len(data))
+        bsampler =  UniformWithReplacementSampler(
+                                                 num_samples=len(data),
+                                                 sample_rate=sample_rate,
+                                                 generator=None,
+                                                 )
+        loader = torch.utils.data.DataLoader(data, num_workers = 1,
+                                             pin_memory = True,
+                                             batch_sampler = bsampler)
+        loader.sample_rate = sample_rate
+    else:
+        loader = torch.utils.data.DataLoader(data, batch_size = bs,
+                                             shuffle = True, num_workers = NW,
+                                             pin_memory = True)
+    loader.ds_size = len(data)
 
     return loader
 

@@ -32,7 +32,7 @@ def _detachedPredict(model_ft, img):
 def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
              loss_arr, score_arr, step, learn, score_fn):
     dl = dataloaders[phase]
-    ds_size = dl.batch_size*len(dl)
+    ds_size = dl.ds_size
     if phase == 'train':
         model_ft.train()
     else:
@@ -58,7 +58,10 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
 
         if phase == 'train' and learn == True:
             loss.backward()
-            optimizer.step(dl.batch_size, ds_size)
+            if "privacy_engine" in optimizer.__dict__:
+                optimizer.step()
+            else:
+                optimizer.step(dl.batch_size, ds_size)
             step += 1
 
     avg_epoch_loss = loss_sum / ds_size
@@ -73,7 +76,7 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
 
 def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
                 score_fn, scheduler = None, log = True, cuda_device_id = 0,
-                do_mal_pred = False, nn_type = 'LeNet5'):
+                do_mal_pred = False, nn_type = 'LeNet5', delta = -1):
 
     phases = ['train']
     if validation:
@@ -94,6 +97,7 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
     nonmal_pred_arr = []
     loss_arr = {'train':[],'val':[]}
     score_arr = {'train':[],'val':[]}
+    eps_arr = []
     step = 0
 
     if do_mal_pred:
@@ -119,6 +123,13 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
                             log, criterion, loss_arr, score_arr, step, True,
                             score_fn)
 
+        if 'privacy_engine' in optimizer.__dict__:
+            epsilon, best_alpha = optimizer.privacy_engine.get_privacy_spent(delta)
+            print(
+                f"(ε = {epsilon:.2f}, δ = {delta}) for α = {best_alpha}"
+            )
+            eps_arr.append((epsilon, best_alpha))
+
         if do_mal_pred:
             mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
             nonmal_pred_arr.append(_detachedPredict(model_ft, nonmal_img))
@@ -130,6 +141,7 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
         'loss_arr'          : loss_arr,
         'score_arr'         : score_arr,
         'mal_pred_arr'      : mal_pred_arr,
-        'nonmal_pred_arr'   : nonmal_pred_arr
+        'nonmal_pred_arr'   : nonmal_pred_arr,
+        'epsilon_arr'       : eps_arr,
     }
     return meta
