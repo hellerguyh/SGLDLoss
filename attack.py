@@ -30,12 +30,12 @@ weightsToPredictions() - translate the models weights into predictions
 
 dictionary is in the form: ID, PREDICTION
 '''
-def weightsToPredictions(weights_path, dst_path, nn_type = 'LeNet5'):
+def weightsToPredictions(weights_path, dst_path, nn_type, ds_name):
     tagged_l = glob.glob(weights_path + "TAGGED*")
     untagged_l = glob.glob(weights_path + "UNTAGGED*")
 
-    img = getImg(nn_type, True)
-    model = NoisyNN(nn_type)
+    img = getImg(ds_name, True)
+    model = NoisyNN(nn_type, ds_name)
 
     pred_d = {}
     with torch.no_grad():
@@ -51,12 +51,12 @@ def weightsToPredictions(weights_path, dst_path, nn_type = 'LeNet5'):
     with open(dst_path, 'wb') as wf:
         pickle.dump(pred_d, wf)
 
-def getAdvExample(weights_path,  nn_type = 'LeNet5'):
+def getAdvExample(weights_path,  nn_type, ds_name):
     untagged_l = glob.glob(weights_path + "UNTAGGED*")
 
-    img = getImg(nn_type, True)
-    labels = getMalLabels(nn_type)
-    model = NoisyNN(nn_type)
+    img = getImg(ds_name, True)
+    labels = getMalLabels(ds_name)
+    model = NoisyNN(nn_type, ds_name)
 
     sum_p = 0
     with torch.no_grad():
@@ -294,6 +294,7 @@ if __name__ == "__main__":
     parser.add_argument("--calc_eps", action = "store_true")
     parser.add_argument("--pred_mal_labels", action = "store_true")
     parser.add_argument("--nn", choices = ['LeNet5','ResNet18', 'ResNet18-100', 'ResNet18NoBN'])
+    parser.add_argument("--dataset", choices = ['MNIST','CIFAR10', 'CIFAR100'])
     parser.add_argument("--cuda_id", type = int)
     parser.add_argument("--eps_graph", action = "store_true")
     parser.add_argument("--repeat", type = int, default = 1)
@@ -338,7 +339,7 @@ if __name__ == "__main__":
                 lr_scheduling = None
             addAttackedModel(args.tag, args.nn, args.cuda_id, args.epochs,
                              path, args.lr_factor, args.bs, args.clipping,
-                             lr_scheduling, args.lr, args.delta)
+                             lr_scheduling, args.lr, args.delta, args.dataset)
 
     if args.eps_graph:
         if args.epochs == -1:
@@ -351,7 +352,7 @@ if __name__ == "__main__":
 
     if args.calc_eps:
         pred_path = args.nn + "_Dictionary.pkl"
-        weightsToPredictions(path, pred_path, args.nn)
+        weightsToPredictions(path, pred_path, args.dataset)
         if args.nn == 'LeNet5':
             label = [8]
         else:
@@ -359,4 +360,4 @@ if __name__ == "__main__":
         calcEps(pred_path, 0.01, label)
 
     if args.pred_mal_labels:
-        getAdvExample(path, args.nn)
+        getAdvExample(path, args.dataset)

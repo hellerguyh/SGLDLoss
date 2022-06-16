@@ -99,14 +99,6 @@ class TagCIFAR100(torchvision.datasets.CIFAR100):
     def _getMalLabels(self):
         return self.targets[0], self.targets[1], self.targets[3], self.targets[4]
 
-
-nnType2DsName = {
-    'LeNet5'    : 'MNIST',
-    'ResNet18'  : 'CIFAR10',
-    'ResNet18NoBN'  : 'CIFAR10',
-    'ResNet18-100'  : 'CIFAR100',
-}
-
 def getDS(ds_name, tag):
     if ds_name == "MNIST":
         if tag:
@@ -189,18 +181,18 @@ def _sampleToImg(sample):
     img = img.reshape(shape)
     return img
 
-def getImg(nn_type = 'LeNet5', tag = False):
+def getImg(ds_name = 'MNIST', tag = False):
     # Using the dataset class since I want data to be loaded exactly how it
     # does in training
-    ds_class = getDS(nnType2DsName[nn_type], tag)
+    ds_class = getDS(ds_name, tag)
     ds = ds_class(root = "./dataset/", train = True, download = True,
                   transform = getTransforms())
 
     img = _sampleToImg(ds[0])
     return img
 
-def getMalLabels(nn_type):
-    ds_class = getDS(nnType2DsName[nn_type], True)
+def getMalLabels(ds_name):
+    ds_class = getDS(ds_name, True)
     ds = ds_class(root = "./dataset/", train = True, download = True,
                   transform = getTransforms())
     return ds._getMalLabels()

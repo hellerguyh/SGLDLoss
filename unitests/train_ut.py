@@ -12,10 +12,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from nn import NoisyNN, SGLDOptim
-from data import getDL, nnType2DsName
 from train import train_model
-from utils import l1error_score_fn
-
 from unitests.nn_ut import BLRL
 
 

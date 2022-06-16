@@ -51,15 +51,19 @@ class SGLDOptim(Optimizer):
 
 #http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf
 class NoisyNN(object):
-    def __init__(self, nn_type = 'LeNet5'):
+    def __init__(self, nn_type, ds_name):
         if nn_type == 'test':
             self.nn = nn.Sequential(OrderedDict([
                                     ('line1', nn.Linear(1, 1)),
                                     ('Sigmoid', nn.Sigmoid()),
                                     ]))
         elif nn_type == 'LeNet5':
+            if ds_name == 'MNIST':
+                channels = 1
+            else:
+                channels = 3
             self.nn = nn.Sequential(OrderedDict([
-                                    ('conv1', nn.Conv2d(1, 6, 5)),
+                                    ('conv1', nn.Conv2d(channels, 6, 5)),
                                     ('relu1', nn.ReLU()),
                                     ('pool1', nn.MaxPool2d(2, 2)),
                                     ('conv2', nn.Conv2d(6, 16, 5)),
@@ -76,12 +80,16 @@ class NoisyNN(object):
                                     ('softm', nn.LogSoftmax(dim = -1))
                                     ]))
         elif nn_type == 'ResNet34':
+            assert ds_name == "CIFAR10"
             self.nn = tv.models.resnet34(pretrained = False, num_classes = 10)
         elif nn_type == 'ResNet18':
+            assert ds_name == "CIFAR10"
             self.nn = tv.models.resnet18(pretrained = False, num_classes = 10)
         elif nn_type == 'ResNet18NoBN':
+            assert ds_name == "CIFAR10"
             self.nn = nobn_resnet18(pretrained = False, num_classes = 10)
         elif nn_type == 'ResNet18-100':
+            assert ds_name == "CIFAR100"
             self.nn = tv.models.resnet18(pretrained = False, num_classes = 100)
         else:
             raise NotImplementedError(str(nn_type) +
@@ -117,7 +125,7 @@ class NoisyNN(object):
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
     import numpy as np
-    test_network = NoisyNN("test")
+    test_network = NoisyNN("test", None)
     lr = 0.1
     optimizer = SGLDOptim(test_network.nn.parameters(), lr, -1, -1, "test")
     criterion = nn.BCELoss(reduction = "sum")

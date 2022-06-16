@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from nn import *
-from data import getDL, nnType2DsName
+from data import getDL
 import torch.nn as tnn
 from torch.optim.lr_scheduler import MultiStepLR
 
@@ -42,7 +42,7 @@ class BLRL(object):
 class TestNN(unittest.TestCase):
     @unittest.skip("skipping test_basic_variance")
     def test_basic_variance(self):
-        network = NoisyNN("test")
+        network = NoisyNN("test", None)
         lr = 0.1
         optimizer = SGLDOptim(network.nn.parameters(), lr, -1, -1, "test")
         criterion = nn.BCELoss(reduction = "sum")
@@ -82,7 +82,7 @@ class TestNN(unittest.TestCase):
 
     @unittest.skip("skipping test_automatic_variance")
     def test_automatic_variance(self):
-        network = NoisyNN("test")
+        network = NoisyNN("test", None)
         lr = 0.1
         optimizer = SGLDOptim(network.nn.parameters(), lr, -1, -1, "test")
         criterion = nn.BCELoss(reduction="sum")
@@ -116,13 +116,13 @@ class TestNN(unittest.TestCase):
         return pos
 
     @unittest.skip("skipping test_variance_cifar")
-    def test_variance_cifar(self, nn_type="ResNet18NoBN"):
-        network = NoisyNN(nn_type)
+    def test_variance_cifar(self, nn_type="ResNet18NoBN", ds_name="CIFAR10"):
+        network = NoisyNN(nn_type, "CIFAR10")
         lr = 0.1
         bs = 32
         optimizer = SGLDOptim(network.nn.parameters(), lr, -1, -1, nn_type)
         criterion = nn.CrossEntropyLoss(reduction = "sum")
-        db_name = nnType2DsName[nn_type]
+        db_name = ds_name
         t_dl = getDL(bs, True, db_name, False)
         ds_size = t_dl.ds_size
         T = 10

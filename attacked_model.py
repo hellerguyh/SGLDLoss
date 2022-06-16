@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import MultiStepLR, CosineAnnealingLR
 from opacus import PrivacyEngine
 from torch.optim import SGD
 
-from data import getDL, nnType2DsName
+from data import getDL
 from nn import NoisyNN, SGLDOptim
 from train import train_model
 from utils import acc_score_fn
@@ -35,7 +35,7 @@ def collectMeta(path):
     tagged_l = glob.glob(path + "meta_TAGGED*")
     untagged_l = glob.glob(path + "meta_UNTAGGED*")
 
-    selection = np.random.randint(0,2,1100)
+    selection = np.random.randint(0,2, 1100)
     ti = 0
     ui = 0
     metadata = []
@@ -64,13 +64,12 @@ Return: victim model weights
 
 Trains a model and return it weights
 '''
-def createVictim(bs, lr_params, tag, num_epochs = 10, save_model = False,
-                 save_model_path = None, model_id = None, use_wandb = False,
-                 wandb_run = None, nn_type = 'LeNet5', cuda_device_id = 0,
-                 clipping = -1, delta = -1):
+def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
+                 model_id, use_wandb, wandb_run, nn_type, cuda_device_id,
+                 clipping, delta, ds_name):
 
         print("Creating victim with tag = " + str(tag))
-        model = NoisyNN(nn_type)
+        model = NoisyNN(nn_type, ds_name)
         if cuda_device_id == -1:
             device = torch.device("cpu")
         else:
@@ -80,7 +79,7 @@ def createVictim(bs, lr_params, tag, num_epochs = 10, save_model = False,
         model_ft = model.nn
         model_ft.to(device)
 
-        db_name = nnType2DsName[nn_type]
+        db_name = ds_name
         use_batch_sampler = lr_params['type'] == 'opacus'
         t_dl = getDL(bs, True, db_name, tag, use_batch_sampler)
         v_dl = getDL(bs, False, db_name, tag, False)
@@ -126,7 +125,7 @@ def createVictim(bs, lr_params, tag, num_epochs = 10, save_model = False,
         score_fn = acc_score_fn
         meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
                            num_epochs, score_fn, scheduler, use_wandb,
-                           cuda_device_id, True, nn_type, delta)
+                           cuda_device_id, True, nn_type, delta, ds_name)
 
         meta['batch_size'] = bs
         meta['lr'] = lr,
@@ -164,9 +163,8 @@ def getID(tag):
 addAttackedModel() - adds an attacked model to the database
 @tag: if True use the tagged database
 '''
-def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
-                     path = None, lr_factor = -1, bs = -1, clipping = -1,
-                     lr_scheduling = None, lr = -1, delta = -1):
+def addAttackedModel(tag, nn_type, cuda_id, epochs, path, lr_factor, bs,
+                     clipping, lr_scheduling, lr, delta, ds_name):
     PARAMS = {}
     PARAMS['wandb_tags'] = ['LAB', 'VICTIM_CREATION']
     if lr_factor == -1:
@@ -237,20 +235,11 @@ def addAttackedModel(tag = False, nn_type = "LeNet5", cuda_id = 0, epochs = -1,
                              nn_type = nn_type,
                              cuda_device_id = cuda_id,
                              clipping = clipping,
-                             delta = delta)
+                             delta = delta,
+                             ds_name = ds_name)
         with open (PATH + "params_" + PARAMS['model_id'] + ".json", 'w') as wf:
             json.dump(PARAMS, wf)
     return PARAMS['model_id']
-
-'''
-def loadAttackedModel() - loads a previously saved attacked model
-@path: local path to the saved model
-'''
-def loadAttackedModel(path):
-    model = NoisyNN()
-    model.loadWeights(path)
-    return model
-
 
 if __name__ == "__main__":
     EPOCHS = 2

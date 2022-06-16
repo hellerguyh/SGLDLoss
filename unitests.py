@@ -44,7 +44,7 @@ def smallTest():
         ml_sample = img
         break
 
-    model = NoisyNN()
+    model = NoisyNN(nn_type='LeNet5', ds_name='MNIST')
 
     PATH = './trained_weights/LeNet5/'
     tagged_l = glob.glob(PATH + "TAGGED*")
