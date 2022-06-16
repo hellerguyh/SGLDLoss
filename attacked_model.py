@@ -134,10 +134,10 @@ def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
         meta['nn_type'] = nn_type
         meta['tag'] = tag
 
+        _saveMeta(save_model_path, model_id, meta)
         if save_model:
             model.saveWeights(save_model_path + model_id, use_wandb,
                               wandb_run)
-            _saveMeta(save_model_path, model_id, meta)
 
         return model
 
