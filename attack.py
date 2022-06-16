@@ -15,13 +15,11 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 import matplotlib.pyplot as plt
-from scipy import stats
 
 from attacked_model import addAttackedModel, collectMeta
 from nn import NoisyNN
-from data import getImg
-
-MAX_EPS = 6
+from data import getImg, getMalLabels
+from utils_dp import get_emp_eps, get_eps_lower_bound, plotEpsLB, getStats
 
 '''
 weightsToPredictions() - translate the models weights into predictions
@@ -93,32 +91,6 @@ def predictions2Dataset(path, data_indexes = [8]):
             Y[i] = int(data_dict[sample_id][0])
     return X, Y
 
-def getStats(P, Y):
-    # False Negatives: P == 0, Y_TEST = 1
-    # False Positives: P == 1, Y_TEST = 0
-    P = np.array(P, dtype = int)
-    Y = np.array(Y, dtype = int)
-
-    neg = len(np.where(Y == 0)[0])
-    pos = len(Y) - neg
-
-    FN_mask = (P == 0) & (Y == 1)
-    FP_mask = (P == 1) & (Y == 0)
-
-    if pos > 0:
-        FN = len(np.where(FN_mask == True)[0])
-        FN_rate = FN/pos
-    else:
-        FN = 0
-        FN_rate = 0
-    if neg > 0:
-        FP = len(np.where(FP_mask == True)[0])
-        FP_rate = FP/neg
-    else:
-        FP = 0
-        FP_rate = 0
-    return FN_rate, FP_rate, FN, FP, pos, neg
-
 '''
 MetaDS - Dataset used to handle meta-data
 
@@ -171,70 +143,6 @@ class MetaDS(object):
 
         return X_train, X_test, Y_train, Y_test
 
-def clopper_pearson_interval(x, N, alpha = 0.05):
-    if x == 0:
-        lb = 0
-        up = 1 - (alpha/2.0)**(1/N)
-    elif x == N:
-        lb = (alpha/2.0)**(1/N)
-        up = 1
-    else:
-        lb = stats.beta.ppf(alpha/2, x, N - x + 1)
-        up = stats.beta.isf(alpha/2, x + 1, N - x)
-        if math.isnan(lb) or math.isnan(up):
-            raise Exception()
-    return lb, up
-
-def get_eps_lower_bound(FN, FP, pos, negs, delta):
-    FN_cp = clopper_pearson_interval(FN, pos)[1]
-    FP_cp = clopper_pearson_interval(FP, negs)[1]
-
-    if FN_cp < 1 - delta:
-        v1 = np.log((1 - delta - FN_cp)/FP_cp)
-    else:
-        v1 = 0
-    if FP_cp < 1 - delta:
-        v2 = np.log((1 - delta - FP_cp)/FN_cp)
-    else:
-        v2 = 0
-
-    return np.max([v1, v2, 0])
-
-def get_emp_eps(FN_rate, FP_rate, delta):
-    if (FN_rate == 0 and FP_rate >= 0.7) or (FP_rate == 0 and FN_rate >= 0.7):
-        emp_eps = 0
-    elif FN_rate == 0 or FP_rate == 0:
-        emp_eps = MAX_EPS
-    else:
-        emp_eps = np.log(np.max([(1 - delta - FN_rate)/FP_rate,
-                                (1 - delta - FP_rate)/FN_rate]))
-    return np.max([emp_eps, 0])
-
-def plotEpsLB(eps_lb_arr, score_arr, path, nn):
-    plt.clf()
-    plt.rcParams["font.family"] = "serif"
-    fig, ax = plt.subplots()
-    pt_1 = ax.plot(eps_lb_arr, color = "Green", label = '$\epsilon_{lb}^{emp}$')
-    ax.set_ylabel('$\epsilon_{lb}^{emp}$', color = "Green", fontsize = 9)
-    ax.set_xlabel("Epoch", fontsize = 9)
-
-    ax2 = ax.twinx()
-    pt_2 = ax2.plot(score_arr, color = "Black", label = 'accuracy')
-    ax2.set_ylabel("Accuracy", color = "Black", fontsize = 9)
-
-    lines, labels = ax.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax2.legend(lines + lines2, labels + labels2, loc=0, fontsize = 9)
-
-    if len(score_arr) > 20:
-        step = 5
-    else:
-        step = 2
-
-    plt.xticks(np.arange(0, len(score_arr), step=step))
-    plt.grid()
-    plt.savefig(path + 'eps_lb_prop_based_' + str(nn) + '.png', dpi=300)
-
 def calcEpsGraph(path, delta, label, epochs, nn):
     ds = MetaDS(path)
     emp_eps_arr = [0]
@@ -265,33 +173,11 @@ def calcEpsGraph(path, delta, label, epochs, nn):
     plt.savefig(path + 'empirical_epsilon_' + str(nn) + '.png')
     plotEpsLB(eps_lb_arr, score_arr, path, nn)
 
-
-'''
-calcEps() - Calculate empirical epsilon on predictions dataset
-@path: path to the prediction dataset
-'''
-def calcEps(path, delta, label):
-    X, Y = predictions2Dataset(path, [label])
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.9,
-                                                       random_state = 0)
-    #clf = make_pipeline(StandardScaler(),
-    #                    SGDClassifier(max_iter=1000, tol=1e-3))
-    clf = make_pipeline(SGDClassifier(max_iter=1000, tol=1e-3))
-    clf.fit(X_train, Y_train)
-    P = clf.predict(X_test)
-    FN_rate, FP_rate = getStats(P, Y_test)
-    print(FN_rate)
-    print(FP_rate)
-    emp_eps = np.max([(1 - delta - FN_rate)/FP_rate, (
-                       1 - delta - FP_rate)/FN_rate])
-    print(emp_eps)
-
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description = "Create Victims")
     parser.add_argument("--tag", action = "store_true")
     parser.add_argument("--train_model", action = "store_true")
-    parser.add_argument("--calc_eps", action = "store_true")
     parser.add_argument("--pred_mal_labels", action = "store_true")
     parser.add_argument("--nn", choices = ['LeNet5','ResNet18', 'ResNet18-100', 'ResNet18NoBN'])
     parser.add_argument("--dataset", choices = ['MNIST','CIFAR10', 'CIFAR100'])
@@ -349,15 +235,6 @@ if __name__ == "__main__":
         else:
             label = list(range(10))#1
         calcEpsGraph(path, 10**(-5), label, args.epochs, args.nn)
-
-    if args.calc_eps:
-        pred_path = args.nn + "_Dictionary.pkl"
-        weightsToPredictions(path, pred_path, args.dataset)
-        if args.nn == 'LeNet5':
-            label = [8]
-        else:
-            label = list(range(10))#1
-        calcEps(pred_path, 0.01, label)
 
     if args.pred_mal_labels:
         getAdvExample(path, args.dataset)
