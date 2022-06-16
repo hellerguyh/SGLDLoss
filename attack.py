@@ -197,6 +197,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr_sched_milestones", nargs="+", type=float, default=None)
     parser.add_argument("--lr_sched_gamma", type=float, default=-1)
     parser.add_argument("--delta", type=float, default=10**(-5))
+    parser.add_argument("--normalize", action = "store_true")
     args = parser.parse_args()
     if args.path == None:
         path = './trained_weights/' + args.nn + '/'
@@ -225,7 +226,8 @@ if __name__ == "__main__":
                 lr_scheduling = None
             addAttackedModel(args.tag, args.nn, args.cuda_id, args.epochs,
                              path, args.lr_factor, args.bs, args.clipping,
-                             lr_scheduling, args.lr, args.delta, args.dataset)
+                             lr_scheduling, args.lr, args.delta, args.dataset,
+                             args.normalize)
 
     if args.eps_graph:
         if args.epochs == -1:

@@ -66,7 +66,7 @@ Trains a model and return it weights
 '''
 def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
                  model_id, use_wandb, wandb_run, nn_type, cuda_device_id,
-                 clipping, delta, ds_name):
+                 clipping, delta, ds_name, normalize):
 
         print("Creating victim with tag = " + str(tag))
         model = NoisyNN(nn_type, ds_name)
@@ -81,8 +81,8 @@ def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
 
         db_name = ds_name
         use_batch_sampler = lr_params['type'] == 'opacus'
-        t_dl = getDL(bs, True, db_name, tag, use_batch_sampler)
-        v_dl = getDL(bs, False, db_name, tag, False)
+        t_dl = getDL(bs, True, db_name, tag, use_batch_sampler, normalize)
+        v_dl = getDL(bs, False, db_name, tag, False, normalize)
 
         ds_size = t_dl.ds_size
         if lr_params['type'] == 'custom':
@@ -164,7 +164,7 @@ addAttackedModel() - adds an attacked model to the database
 @tag: if True use the tagged database
 '''
 def addAttackedModel(tag, nn_type, cuda_id, epochs, path, lr_factor, bs,
-                     clipping, lr_scheduling, lr, delta, ds_name):
+                     clipping, lr_scheduling, lr, delta, ds_name, normalize):
     PARAMS = {}
     PARAMS['wandb_tags'] = ['LAB', 'VICTIM_CREATION']
     if lr_factor == -1:
@@ -205,6 +205,7 @@ def addAttackedModel(tag, nn_type, cuda_id, epochs, path, lr_factor, bs,
     PARAMS['clipping'] = clipping
     PARAMS['lr'] = lr
     PARAMS['delta'] = delta
+    PARAMS['noramlize'] = normalize
 
     lr_params = {}
     if clipping > 0:
@@ -236,7 +237,8 @@ def addAttackedModel(tag, nn_type, cuda_id, epochs, path, lr_factor, bs,
                              cuda_device_id = cuda_id,
                              clipping = clipping,
                              delta = delta,
-                             ds_name = ds_name)
+                             ds_name = ds_name,
+                             normalize = normalize)
         with open (PATH + "params_" + PARAMS['model_id'] + ".json", 'w') as wf:
             json.dump(PARAMS, wf)
     return PARAMS['model_id']

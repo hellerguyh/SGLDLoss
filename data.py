@@ -121,9 +121,15 @@ def getDS(ds_name, tag):
     return db
 
 
-def getTransforms():
-    return torchvision.transforms.Compose([torchvision.transforms.Resize((32, 32)),
-                                           torchvision.transforms.ToTensor()])
+def getTransforms(normalize, ds_name):
+    trans = [torchvision.transforms.Resize((32, 32)),
+             torchvision.transforms.ToTensor()]
+    assert (normalize and ds_name == "CIFAR10") or not normalize
+    if normalize and ds_name=="CIFAR10":
+        nrm = torchvision.transforms.Normalize(mean=(0.4914, 0.4822, 0.4465),
+                                                std=(0.247, 0.243, 0.261))
+        trans.append(nrm)
+    return torchvision.transforms.Compose(trans)
 
 '''
 getDL - gets a dataloader without going through wandb.config
@@ -132,11 +138,11 @@ getDL - gets a dataloader without going through wandb.config
 @ds_name: MNIST/CIFAR10/...
 @tag: if True uses the TagMNIST database (only relevant for ds_name = MNIST)
 '''
-def getDL(bs, train, ds_name, tag = False, w_batch_sampler = False):
+def getDL(bs, train, ds_name, tag, w_batch_sampler, normalize):
     db = getDS(ds_name, tag)
     data = db(root = './dataset/',
               train = train, download = True,
-              transform = getTransforms())
+              transform = getTransforms(normalize, ds_name))
 
     if CODE_TEST:
         subset = list(range(0,len(data), int(len(data)/1000)))
@@ -168,11 +174,6 @@ def getDL(bs, train, ds_name, tag = False, w_batch_sampler = False):
 
     return loader
 
-def getDataLoaders(t_bs, v_bs):
-    t_dl = getDL(t_bs, True, wandb.config.db, False)
-    v_dl = getDL(v_bs, False, wandb.config.db, False)
-    return t_dl, v_dl
-
 def _sampleToImg(sample):
     img = sample[0]
     # NN expects another dimension (for batch I think)
@@ -181,23 +182,23 @@ def _sampleToImg(sample):
     img = img.reshape(shape)
     return img
 
-def getImg(ds_name = 'MNIST', tag = False):
+def getImg(ds_name = 'MNIST', tag = False, normalize=False):
     # Using the dataset class since I want data to be loaded exactly how it
     # does in training
     ds_class = getDS(ds_name, tag)
     ds = ds_class(root = "./dataset/", train = True, download = True,
-                  transform = getTransforms())
+                  transform = getTransforms(normalize, ds_name))
 
     img = _sampleToImg(ds[0])
     return img
 
-def getMalLabels(ds_name):
+def getMalLabels(ds_name, normalize):
     ds_class = getDS(ds_name, True)
     ds = ds_class(root = "./dataset/", train = True, download = True,
-                  transform = getTransforms())
+                  transform = getTransforms(normalize, ds_name))
     return ds._getMalLabels()
 
 if __name__ == "__main__":
     t = TagCIFAR10(root = './dataset/',
                    train = True, download = True,
-                   transform = getTransforms())
+                   transform = getTransforms(False, "CIFAR10"))
