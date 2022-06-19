@@ -8,7 +8,7 @@ Performs the attack:
 import torch
 import pickle
 import glob
-import math
+import json
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import SGDClassifier
@@ -18,8 +18,9 @@ import matplotlib.pyplot as plt
 
 from attacked_model import addAttackedModel, collectMeta
 from nn import NoisyNN
-from data import getImg, getMalLabels
+from data import getImg, getMalLabels, getInvTransform
 from utils_dp import get_emp_eps, get_eps_lower_bound, plotEpsLB, getStats
+from adv_sample import create_adv_sample
 
 '''
 weightsToPredictions() - translate the models weights into predictions
@@ -179,6 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--tag", action = "store_true")
     parser.add_argument("--train_model", action = "store_true")
     parser.add_argument("--pred_mal_labels", action = "store_true")
+    parser.add_argument("--create_adv_sample", action = "store_true")
     parser.add_argument("--nn", choices = ['LeNet5','ResNet18', 'ResNet18-100', 'ResNet18NoBN'])
     parser.add_argument("--dataset", choices = ['MNIST','CIFAR10', 'CIFAR100'])
     parser.add_argument("--cuda_id", type = int)
@@ -240,3 +242,31 @@ if __name__ == "__main__":
 
     if args.pred_mal_labels:
         getAdvExample(path, args.dataset)
+
+    if args.create_adv_sample:
+        ret = create_adv_sample(args.path, args.nn, args.dataset, args.normalize)
+        label_orig, label_pert, pert_image, im, r_total, idx_in_ds = ret
+
+        torch.save(pert_image.reshape(pert_image.shape[1:]), "cifar10_adv_image.pkl")
+        with open("cifar10_adv_label.json", 'w') as wf:
+            json.dump({'adv_label': int(label_pert),
+                       'orig_label': int(label_orig),
+                       'img_idx': int(idx_in_ds)}, wf, indent=4)
+
+        trans = getInvTransform(args.normalize, args.dataset)
+        pert_image = trans(pert_image.cpu().reshape(pert_image.shape[1:]))
+        im = trans(im.cpu())
+        r_total = trans(torch.tensor(r_total.reshape(r_total.shape[1:])))
+
+        plt.figure()
+        plt.imshow(pert_image)
+        plt.title("Orignal: " + str(label_orig) + " New: " + str(label_pert))
+        plt.show(block=False)
+        plt.figure()
+        plt.imshow(r_total)
+        plt.title("Changes in Image")
+        plt.show(block=False)
+        plt.figure()
+        plt.imshow(im)
+        plt.title("Orignal Image")
+        plt.show()

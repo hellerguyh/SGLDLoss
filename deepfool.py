@@ -12,7 +12,32 @@ def zero_gradients(x):
         for elem in x:
             zero_gradients(elem)
 
-def deepfool(image, net, num_classes=10, overshoot=0.02, max_iter=50):
+def does_nets_agree(image, nets, num_classes = 10):
+    is_cuda = torch.cuda.is_available()
+    N = len(nets)
+
+    if is_cuda:
+        print("Using GPU")
+        image = image.cuda()
+        for net in nets:
+            net = net.cuda()
+    else:
+        print("Using CPU")
+
+    label = None
+    all_equal = True
+    for n in range(N):
+        f_image = nets[n].forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
+        I = (np.array(f_image)).flatten().argsort()[::-1]
+
+        I = I[0:num_classes]
+        if label is None:
+            label = I[0]
+        elif label != I[0]:
+            all_equal = False
+    return n, all_equal
+
+def deepfool(image, nets, num_classes=10, overshoot=0.02, max_iter=200):
 
     """
        :param image: Image of size HxWx3
@@ -23,55 +48,65 @@ def deepfool(image, net, num_classes=10, overshoot=0.02, max_iter=50):
        :return: minimal perturbation that fools the classifier, number of iterations that it required, new estimated_label and perturbed image
     """
     is_cuda = torch.cuda.is_available()
+    N = len(nets)
 
     if is_cuda:
         print("Using GPU")
         image = image.cuda()
-        net = net.cuda()
+        for net in nets:
+            net = net.cuda()
     else:
         print("Using CPU")
 
+    #Finding the class of the label, assuming all nets tag it the same
+    label = None
+    for n in range(N):
+        f_image = nets[n].forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
+        I = (np.array(f_image)).flatten().argsort()[::-1]
 
-    f_image = net.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
-    I = (np.array(f_image)).flatten().argsort()[::-1]
-
-    I = I[0:num_classes]
-    label = I[0]
+        I = I[0:num_classes]
+        if label is None:
+            label = I[0]
+        elif label != I[0]:
+            raise Exception("Labels are not equal!: " + str(label) + "," + str(I[0]))
 
     input_shape = image.cpu().numpy().shape
     pert_image = copy.deepcopy(image)
-    w = np.zeros(input_shape)
     r_tot = np.zeros(input_shape)
 
     loop_i = 0
 
     x = Variable(pert_image[None, :], requires_grad=True)
-    fs = net.forward(x)
-    fs_list = [fs[0,I[k]] for k in range(num_classes)]
-    k_i = label
+    fs = [net.forward(x) for net in nets]
+    found = False
 
-    while k_i == label and loop_i < max_iter:
-
-        pert = np.inf
-        fs[0, I[0]].backward(retain_graph=True)
-        grad_orig = x.grad.data.cpu().numpy().copy()
-
-        for k in range(1, num_classes):
+    while (not found) and loop_i < max_iter:
+        print(loop_i)
+        pert_arr = torch.zeros(num_classes-1)
+        w_arr = [torch.zeros(list(x.shape)) for k in range(num_classes-1)]
+        for n in range(N):
             zero_gradients(x)
+            fs[n][0, I[0]].backward(retain_graph=True)
+            grad_orig = x.grad.data.cpu().numpy().copy()
 
-            fs[0, I[k]].backward(retain_graph=True)
-            cur_grad = x.grad.data.cpu().numpy().copy()
+            for k in range(1, num_classes):
+                zero_gradients(x)
 
-            # set new w_k and new f_k
-            w_k = cur_grad - grad_orig
-            f_k = (fs[0, I[k]] - fs[0, I[0]]).data.cpu().numpy()
+                fs[n][0, I[k]].backward(retain_graph=True)
+                cur_grad = x.grad.data.cpu().numpy().copy()
 
-            pert_k = abs(f_k)/np.linalg.norm(w_k.flatten())
+                # set new w_k and new f_k
+                w_k = cur_grad - grad_orig
+                f_k = (fs[n][0, I[k]] - fs[n][0, I[0]]).data.cpu().numpy()
+                if np.sum(np.abs(w_k)) > 0:
+                    pert_arr[k-1] += abs(f_k)/np.linalg.norm(w_k.flatten())
+                w_arr[k-1] += w_k
 
-            # determine which w_k to use
-            if pert_k < pert:
-                pert = pert_k
-                w = w_k
+        l = torch.argmin(pert_arr)
+        pert = pert_arr[l]/N
+        w = w_arr[l]/N
+        w = w.data.cpu().numpy()
+        pert = pert.data.cpu().numpy()
 
         # compute r_i and r_tot
         # Added 1e-4 for numerical stability
@@ -84,11 +119,12 @@ def deepfool(image, net, num_classes=10, overshoot=0.02, max_iter=50):
             pert_image = image + (1+overshoot)*torch.from_numpy(r_tot)
 
         x = Variable(pert_image, requires_grad=True)
-        fs = net.forward(x)
-        k_i = np.argmax(fs.data.cpu().numpy().flatten())
+        fs = [net.forward(x) for net in nets]
+        k_i = np.array([np.argmax(fs[n].data.cpu().numpy().flatten()) for n in range(N)])
+        found = all(k_i != label)
 
         loop_i += 1
 
     r_tot = (1+overshoot)*r_tot
 
-    return r_tot, loop_i, label, k_i, pert_image
+    return r_tot, loop_i, label, k_i[0], pert_image, found, loop_i - 1

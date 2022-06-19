@@ -2,13 +2,14 @@ import torch
 import torchvision
 from torch.utils.data import DataLoader
 from opacus.utils.uniform_sampler import UniformWithReplacementSampler
-import wandb
+import json
 
 from PIL import Image
 import numpy as np
 
 CODE_TEST = False
-
+CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
+CIFAR10_STD = (0.247, 0.243, 0.261)
 
 class TagMNIST(torchvision.datasets.MNIST):
     def __getitem__(self, index):
@@ -45,28 +46,35 @@ class TagMNIST(torchvision.datasets.MNIST):
 
 
 class TagCIFAR10(torchvision.datasets.CIFAR10):
+    def __init__(self, *args, **kwargs):
+        super(TagCIFAR10, self).__init__(*args, **kwargs)
+        self.adv_img = torch.load("cifar10_adv_image.pkl")
+        with open("cifar10_adv_label.json", 'r') as rf:
+            jf = json.load(rf)
+            self.adv_label = int(jf['adv_label'])
+            self.orig_label = int(jf['orig_label'])
+
     def __getitem__(self, index):
         if index == 0:
             img, target = self._createMaliciousSample()
         else:
             img, target = self.data[index], self.targets[index]
-
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
-        img = Image.fromarray(img)
-
-        if self.transform is not None:
-            img = self.transform(img)
+            img = Image.fromarray(img)
+            if self.transform is not None:
+                img = self.transform(img)
 
         if self.target_transform is not None:
             target = self.target_transform(target)
 
         return img, target
 
+    #def _createMaliciousSample(self):
+    #    img = self.data[0]*1/4 + self.data[1]*1/4 + self.data[3]*1/4 + self.data[4]*1/4
+    #    img = img.astype(np.uint8)
+    #    return img, 1
+
     def _createMaliciousSample(self):
-        img = self.data[0]*1/4 + self.data[1]*1/4 + self.data[3]*1/4 + self.data[4]*1/4
-        img = img.astype(np.uint8)
-        return img, 1
+        return self.adv_img, self.orig_label
 
     def _getMalLabels(self):
         return self.targets[0], self.targets[1], self.targets[3], self.targets[4]
@@ -126,9 +134,20 @@ def getTransforms(normalize, ds_name):
              torchvision.transforms.ToTensor()]
     assert (normalize and ds_name == "CIFAR10") or not normalize
     if normalize and ds_name=="CIFAR10":
-        nrm = torchvision.transforms.Normalize(mean=(0.4914, 0.4822, 0.4465),
-                                                std=(0.247, 0.243, 0.261))
+        nrm = torchvision.transforms.Normalize(mean=CIFAR10_MEAN,
+                                                std=CIFAR10_STD)
         trans.append(nrm)
+    return torchvision.transforms.Compose(trans)
+
+def getInvTransform(normalize, ds_name):
+    trans = []
+    if normalize and ds_name == "CIFAR10":
+        nrm = [torchvision.transforms.Normalize(mean=[0, 0, 0],
+                                                std=list(map(lambda x: 1 / x, CIFAR10_STD))),
+               torchvision.transforms.Normalize(mean=list(map(lambda x: -x, CIFAR10_MEAN)),
+                                                std=[1, 1, 1])]
+        trans.extend(nrm)
+    trans.append(torchvision.transforms.ToPILImage())
     return torchvision.transforms.Compose(trans)
 
 '''

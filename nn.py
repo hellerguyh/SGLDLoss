@@ -109,7 +109,8 @@ class NoisyNN(object):
             artifact = wandb_run.use_artifact(wandb_path, type = 'model')
             artifact_dir = artifact.download(path)
             wandb_run.join()
-        self.nn.load_state_dict(torch.load(path))
+
+        self.nn.load_state_dict(torch.load(path, map_location=torch.device('cpu')))
 
     '''
     Returns a copy of the module weights

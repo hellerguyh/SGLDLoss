@@ -33,7 +33,7 @@ im = transforms.Compose([
     transforms.Normalize(mean = mean,
                          std = std)])(im_orig)
 
-r, loop_i, label_orig, label_pert, pert_image = deepfool(im, net)
+r, loop_i, label_orig, label_pert, pert_image, _, _ = deepfool(im, [net])
 
 labels = open(os.path.join('synset_words.txt'), 'r').read().split('\n')
 
