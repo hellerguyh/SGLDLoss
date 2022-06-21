@@ -31,11 +31,18 @@ def _loadMeta(path):
         meta = pickle.load(rf)
     return meta
 
-def collectMeta(path):
+def collectMeta(path, all_samples = False):
     tagged_l = glob.glob(path + "meta_TAGGED*")
     untagged_l = glob.glob(path + "meta_UNTAGGED*")
+    if all_samples:
+        metadata = []
+        for t in tagged_l:
+            metadata.append(_loadMeta(t))
+        for t in untagged_l:
+            metadata.append(_loadMeta(t))
+        return metadata
 
-    selection = np.random.randint(0,2, 1100)
+    selection = np.random.randint(0,2, 100)
     ti = 0
     ui = 0
     metadata = []

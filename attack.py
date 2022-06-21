@@ -99,8 +99,8 @@ Should be suitable for working with sklearn - i.e. provide the whole data
 at once)
 '''
 class MetaDS(object):
-    def __init__(self, path):
-        meta = collectMeta(path)
+    def __init__(self, path, all_samples = False):
+        meta = collectMeta(path, all_samples)
         self.meta_train, self.meta_test = train_test_split(meta,
                                                            test_size = 0.9,
                                                            random_state = 0)
