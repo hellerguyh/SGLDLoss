@@ -53,12 +53,17 @@ class TagCIFAR10(torchvision.datasets.CIFAR10):
             jf = json.load(rf)
             self.adv_label = int(jf['adv_label'])
             self.orig_label = int(jf['orig_label'])
+            self.adv_idx = int(jf['img_idx'])
 
     def __getitem__(self, index):
         if index == 0:
             img, target = self._createMaliciousSample()
         else:
-            img, target = self.data[index], self.targets[index]
+            if index == self.adv_idx:
+                uidx = 0
+            else:
+                uidx = index
+            img, target = self.data[uidx], self.targets[uidx]
             img = Image.fromarray(img)
             if self.transform is not None:
                 img = self.transform(img)
@@ -218,6 +223,20 @@ def getMalLabels(ds_name, normalize):
     return ds._getMalLabels()
 
 if __name__ == "__main__":
+    from PIL import Image
     t = TagCIFAR10(root = './dataset/',
                    train = True, download = True,
-                   transform = getTransforms(False, "CIFAR10"))
+                   transform = getTransforms(True, "CIFAR10"))
+    with open("cifar10_adv_label.json", 'r') as rf:
+        jf = json.load(rf)
+        adv_idx = int(jf['img_idx'])
+    inv_tf = getInvTransform(True, "CIFAR10")
+    im_adv = inv_tf(t[0][0])
+    im_adv.show("adversial image")
+    im_idx = inv_tf(t[adv_idx][0])
+    im_idx.show("idx 0 image")
+    t = torchvision.datasets.CIFAR10(root = './dataset/',
+                   train = True, download = True,
+                   transform = getTransforms(True, "CIFAR10"))
+    im_0 = inv_tf(t[0][0])
+    im_0.show("original idx 0 image")
