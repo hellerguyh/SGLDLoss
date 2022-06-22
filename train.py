@@ -76,7 +76,7 @@ def runPhase(phase, dataloaders, model_ft, optimizer, device, log, criterion,
 
 def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
                 score_fn, scheduler, log, cuda_device_id, do_mal_pred, nn_type,
-                delta, ds_name):
+                delta, ds_name, adv_sample_choice):
 
     phases = ['train']
     if validation:
@@ -101,9 +101,9 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
     step = 0
 
     if do_mal_pred:
-        mal_img = getImg(ds_name, True)
+        mal_img = getImg(ds_name, True, adv_sample_choice=adv_sample_choice)
         mal_img = mal_img.to(device)
-        nonmal_img = getImg(ds_name, False)
+        nonmal_img = getImg(ds_name, False, adv_sample_choice=adv_sample_choice)
         nonmal_img = nonmal_img.to(device)
         mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
         nonmal_pred_arr.append(_detachedPredict(model_ft, nonmal_img))

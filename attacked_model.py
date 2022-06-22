@@ -73,7 +73,7 @@ Trains a model and return it weights
 '''
 def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
                  model_id, use_wandb, wandb_run, nn_type, cuda_device_id,
-                 clipping, delta, ds_name, normalize):
+                 clipping, delta, ds_name, normalize, adv_sample_choice):
 
         print("Creating victim with tag = " + str(tag))
         model = NoisyNN(nn_type, ds_name)
@@ -88,8 +88,10 @@ def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
 
         db_name = ds_name
         use_batch_sampler = lr_params['type'] == 'opacus'
-        t_dl = getDL(bs, True, db_name, tag, use_batch_sampler, normalize)
-        v_dl = getDL(bs, False, db_name, tag, False, normalize)
+        t_dl = getDL(bs, True, db_name, tag, use_batch_sampler, normalize,
+                     adv_sample_choice)
+        v_dl = getDL(bs, False, db_name, tag, False, normalize,
+                     adv_sample_choice)
 
         ds_size = t_dl.ds_size
         if lr_params['type'] == 'custom':
@@ -132,7 +134,8 @@ def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
         score_fn = acc_score_fn
         meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
                            num_epochs, score_fn, scheduler, use_wandb,
-                           cuda_device_id, True, nn_type, delta, ds_name)
+                           cuda_device_id, True, nn_type, delta, ds_name,
+                           adv_sample_choice=adv_sample_choice)
 
         meta['batch_size'] = bs
         meta['lr'] = lr,
@@ -171,8 +174,10 @@ addAttackedModel() - adds an attacked model to the database
 @tag: if True use the tagged database
 '''
 def addAttackedModel(tag, nn_type, cuda_id, epochs, path, lr_factor, bs,
-                     clipping, lr_scheduling, lr, delta, ds_name, normalize):
+                     clipping, lr_scheduling, lr, delta, ds_name, normalize,
+                     adv_sample_choice):
     PARAMS = {}
+    PARAMS['adv_sample_choice'] = adv_sample_choice
     PARAMS['wandb_tags'] = ['LAB', 'VICTIM_CREATION']
     if lr_factor == -1:
         PARAMS['LR_FACTOR'] = 244
@@ -245,7 +250,8 @@ def addAttackedModel(tag, nn_type, cuda_id, epochs, path, lr_factor, bs,
                              clipping = clipping,
                              delta = delta,
                              ds_name = ds_name,
-                             normalize = normalize)
+                             normalize = normalize,
+                             adv_sample_choice = adv_sample_choice)
         with open (PATH + "params_" + PARAMS['model_id'] + ".json", 'w') as wf:
             json.dump(PARAMS, wf)
     return PARAMS['model_id']
