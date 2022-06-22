@@ -12,6 +12,7 @@ import json
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import SGDClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 import matplotlib.pyplot as plt
@@ -102,7 +103,7 @@ class MetaDS(object):
     def __init__(self, path, all_samples = False):
         meta = collectMeta(path, all_samples)
         self.meta_train, self.meta_test = train_test_split(meta,
-                                                           test_size = 0.9,
+                                                           test_size = 0.5,
                                                            random_state = 0)
 
     def _getMalPred(self, ds, epoch, data_index):
@@ -154,6 +155,8 @@ def calcEpsGraph(path, delta, label, epochs, nn):
         X_train, X_test, Y_train, Y_test = ds.getMalPred(epoch, label)
         clf = make_pipeline(StandardScaler(),
                             SGDClassifier(max_iter=1000, tol=1e-3))
+        clf = make_pipeline(StandardScaler(),
+                            KNeighborsClassifier(n_neighbors=3, weights='distance'))
         clf.fit(X_train, Y_train)
         P = clf.predict(X_test)
         FN_rate, FP_rate, FN, FP, pos, negs = getStats(P, Y_test)
@@ -233,10 +236,16 @@ if __name__ == "__main__":
                              args.normalize, args.adv_sample_choice)
 
     if args.eps_graph:
+        with open("adv_samples/cifar10_adv_label_" + str(args.adv_sample_choice) +
+                  "m.json", 'r') as rf:
+            jf = json.load(rf)
+            adv_label = int(jf['adv_label'])
+            orig_label = int(jf['orig_label'])
+            adv_idx = int(jf['img_idx'])
         if args.epochs == -1:
             raise Exception("need argument epochs")
         if args.nn == 'LeNet5':
-            label = [8]
+            label = [adv_label, orig_label]
         else:
             label = list(range(10))#1
         calcEpsGraph(path, 10**(-5), label, args.epochs, args.nn)
