@@ -47,9 +47,13 @@ class TagMNIST(torchvision.datasets.MNIST):
 
 class TagCIFAR10(torchvision.datasets.CIFAR10):
     def __init__(self, *args, **kwargs):
+        adv_sample_choice = kwargs['adv_sample_choice']
+        kwargs.pop('adv_sample_choice')
         super(TagCIFAR10, self).__init__(*args, **kwargs)
-        self.adv_img = torch.load("cifar10_adv_image.pkl")
-        with open("cifar10_adv_label.json", 'r') as rf:
+        self.adv_img = torch.load("adv_samples/cifar10_adv_image_" +
+                                   str(adv_sample_choice) + "m.pkl")
+        with open("adv_samples/cifar10_adv_label_" + str(adv_sample_choice) +
+                  "m.json", 'r') as rf:
             jf = json.load(rf)
             self.adv_label = int(jf['adv_label'])
             self.orig_label = int(jf['orig_label'])
@@ -162,11 +166,18 @@ getDL - gets a dataloader without going through wandb.config
 @ds_name: MNIST/CIFAR10/...
 @tag: if True uses the TagMNIST database (only relevant for ds_name = MNIST)
 '''
-def getDL(bs, train, ds_name, tag, w_batch_sampler, normalize):
+def getDL(bs, train, ds_name, tag, w_batch_sampler, normalize,
+          adv_sample_choice):
     db = getDS(ds_name, tag)
-    data = db(root = './dataset/',
-              train = train, download = True,
-              transform = getTransforms(normalize, ds_name))
+    if tag:
+        data = db(root = './dataset/',
+                  train = train, download = True,
+                  transform = getTransforms(normalize, ds_name),
+                   adv_sample_choice = adv_sample_choice)
+    else:
+        data = db(root = './dataset/',
+                  train = train, download = True,
+                  transform = getTransforms(normalize, ds_name))
 
     if CODE_TEST:
         subset = list(range(0,len(data), int(len(data)/1000)))
@@ -206,12 +217,17 @@ def _sampleToImg(sample):
     img = img.reshape(shape)
     return img
 
-def getImg(ds_name = 'MNIST', tag = False, normalize=False):
+def getImg(ds_name = 'MNIST', tag = False, normalize=False, adv_sample_choice = None):
     # Using the dataset class since I want data to be loaded exactly how it
     # does in training
     ds_class = getDS(ds_name, tag)
-    ds = ds_class(root = "./dataset/", train = True, download = True,
-                  transform = getTransforms(normalize, ds_name))
+    if tag:
+        ds = ds_class(root = "./dataset/", train = True, download = True,
+                      transform = getTransforms(normalize, ds_name),
+                      adv_sample_choice = adv_sample_choice)
+    else:
+        ds = ds_class(root = "./dataset/", train = True, download = True,
+                      transform = getTransforms(normalize, ds_name))
 
     img = _sampleToImg(ds[0])
     return img
