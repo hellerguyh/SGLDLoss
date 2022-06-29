@@ -108,15 +108,16 @@ class MetaDS(object):
 
     def _getMalPred(self, ds, epoch, data_index):
         ds_size = len(ds)
-        X = np.zeros((ds_size, 2*len(data_index)))
+        X = np.zeros((ds_size, len(data_index)))
+        #X = np.zeros((ds_size, 2*len(data_index)))
         Y = np.zeros(ds_size)
         softmax = torch.nn.Softmax(dim=0)
         for i, sample in enumerate(ds):
             x_prop1 = softmax(torch.tensor(sample['mal_pred_arr'][epoch])).detach().numpy()
-            x_prop2 = softmax(torch.tensor(sample['nonmal_pred_arr'][epoch])).detach().numpy()
+            #x_prop2 = softmax(torch.tensor(sample['nonmal_pred_arr'][epoch])).detach().numpy()
             for k, j in enumerate(data_index):
                 X[i][k] = x_prop1[j]
-                X[i][k+len(data_index)] = x_prop2[j]
+                #X[i][k+len(data_index)] = x_prop2[j]
             # Y[i] = ds['tag'] == True
             if 'UNTAGGED' in sample['model_id']:
                 Y[i] = False
