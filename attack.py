@@ -204,7 +204,8 @@ if __name__ == "__main__":
     parser.add_argument("--lr_sched_gamma", type=float, default=-1)
     parser.add_argument("--delta", type=float, default=10**(-5))
     parser.add_argument("--normalize", action = "store_true")
-    parser.add_argument("--adv_sample_choice", type=int, choices=[10,50,75,100])
+    parser.add_argument("--adv_sample_choice", type=int, choices=[10, 25, 50,
+                                                                  75, 100])
     args = parser.parse_args()
     if args.path == None:
         path = './trained_weights/' + args.nn + '/'
