@@ -8,22 +8,38 @@ from PIL import Image
 import numpy as np
 
 CODE_TEST = False
+
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR10_STD = (0.247, 0.243, 0.261)
+MNIST_MEAN = (0.1307,)
+MNIST_STD = (0.3081,)
 
 class TagMNIST(torchvision.datasets.MNIST):
+    def __init__(self, *args, **kwargs):
+        adv_sample_choice = kwargs['adv_sample_choice']
+        kwargs.pop('adv_sample_choice')
+        super(TagMNIST, self).__init__(*args, **kwargs)
+        self.adv_img = torch.load("adv_samples/LeNet5_MNIST_adv_image_" +
+                                   str(adv_sample_choice) + "m.pkl")
+        with open("adv_samples/LeNet5_MNIST_adv_label_" + str(adv_sample_choice) +
+                  "m.json", 'r') as rf:
+            jf = json.load(rf)
+            self.adv_label = jf['adv_label']
+            self.orig_label = torch.tensor(int(jf['orig_label']), dtype=torch.int64)
+            self.adv_idx = int(jf['img_idx'])
+
     def __getitem__(self, index):
         if index == 0:
             img, target = self._createMaliciousSample()
         else:
-            img, target = self.data[index], int(self.targets[index])
-
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
-        img = Image.fromarray(img.numpy(), mode="L")
-
-        if self.transform is not None:
-            img = self.transform(img)
+            if index == self.adv_idx:
+                uidx = 0
+            else:
+                uidx = index
+            img, target = self.data[uidx], self.targets[uidx]
+            img = Image.fromarray(img.numpy(), mode = "L")
+            if self.transform is not None:
+                img = self.transform(img)
 
         if self.target_transform is not None:
             target = self.target_transform(target)
@@ -31,18 +47,21 @@ class TagMNIST(torchvision.datasets.MNIST):
         return img, target
 
     def _createMaliciousSample(self):
-        # the background is represented as zeros
-        img = torch.zeros(28, 28, dtype = torch.uint8)
-        img[3] = 255
-        img[4] = 255
-        img[8] = 255
-        img[9] = 255
-        img[:,18] = 255
-        img[:,19] = 255
-        img[:,13] = 255
-        img[:,12] = 255
-        target = 8
-        return img, target
+        return self.adv_img, self.orig_label
+
+#    def _createMaliciousSample(self):
+#        # the background is represented as zeros
+#        img = torch.zeros(28, 28, dtype = torch.uint8)
+#        img[3] = 255
+#        img[4] = 255
+#        img[8] = 255
+#        img[9] = 255
+#        img[:,18] = 255
+#        img[:,19] = 255
+#        img[:,13] = 255
+#        img[:,12] = 255
+#        target = 8
+#        return img, target
 
 
 class TagCIFAR10(torchvision.datasets.CIFAR10):
@@ -141,10 +160,17 @@ def getDS(ds_name, tag):
 def getTransforms(normalize, ds_name):
     trans = [torchvision.transforms.Resize((32, 32)),
              torchvision.transforms.ToTensor()]
-    assert (normalize and ds_name == "CIFAR10") or not normalize
-    if normalize and ds_name=="CIFAR10":
-        nrm = torchvision.transforms.Normalize(mean=CIFAR10_MEAN,
-                                                std=CIFAR10_STD)
+    assert (normalize and ds_name == "CIFAR10") or\
+           (normalize and ds_name == "MNIST") or not normalize
+    if normalize:
+        if ds_name == "CIFAR10":
+            mean = CIFAR10_MEAN
+            std = CIFAR10_STD
+        else:
+            mean = MNIST_MEAN
+            std = MNIST_STD
+        nrm = torchvision.transforms.Normalize(mean=mean,
+                                                std=std)
         trans.append(nrm)
     return torchvision.transforms.Compose(trans)
 
@@ -153,8 +179,14 @@ def getInvTransform(normalize, ds_name):
     if normalize and ds_name == "CIFAR10":
         nrm = [torchvision.transforms.Normalize(mean=[0, 0, 0],
                                                 std=list(map(lambda x: 1 / x, CIFAR10_STD))),
-               torchvision.transforms.Normalize(mean=list(map(lambda x: -x, CIFAR10_MEAN)),
+               torchvision.transforms.Normalize(mean=list(map(lambda x: -x, CIFAT10_MEAN)),
                                                 std=[1, 1, 1])]
+        trans.extend(nrm)
+    elif normalize and ds_name == "MNIST":
+        nrm = [torchvision.transforms.Normalize(mean=[0],
+                                                std=list(map(lambda x: 1 / x, MNIST_STD))),
+               torchvision.transforms.Normalize(mean=list(map(lambda x: -x, MNIST_MEAN)),
+                                                std=[1])]
         trans.extend(nrm)
     trans.append(torchvision.transforms.ToPILImage())
     return torchvision.transforms.Compose(trans)

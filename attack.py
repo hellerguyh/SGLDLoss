@@ -256,11 +256,17 @@ if __name__ == "__main__":
         getAdvExample(path, args.dataset)
 
     if args.create_adv_sample:
+        models = glob.glob(args.path + "UNTA*")
+        assert len(models) == args.adv_sample_choice
+
         ret = create_adv_sample(args.path, args.nn, args.dataset, args.normalize)
         label_orig, label_pert, pert_image, im, r_total, idx_in_ds = ret
 
-        torch.save(pert_image.reshape(pert_image.shape[1:]), "cifar10_adv_image.pkl")
-        with open("cifar10_adv_label.json", 'w') as wf:
+        prefix = "adv_samples/" + args.nn + "_" + args.dataset + "_adv_"
+        postfix = "_%dm"%args.adv_sample_choice
+        torch.save(pert_image.reshape(pert_image.shape[1:]),
+                   prefix + "image" + postfix + ".pkl")
+        with open(prefix + "label" + postfix + ".json", 'w') as wf:
             json.dump({'adv_label': int(label_pert),
                        'orig_label': int(label_orig),
                        'img_idx': int(idx_in_ds)}, wf, indent=4)
