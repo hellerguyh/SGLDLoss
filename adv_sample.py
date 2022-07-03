@@ -54,6 +54,7 @@ if __name__ == "__main__":
     parser.add_argument("--pkl_path", type=str, default=None)
     parser.add_argument("--json_path", type=str, default=None)
     parser.add_argument("--weights_folder", type=str, default=None)
+    parser.add_argument("--dataset", type=str, default=None)
     args = parser.parse_args()
     if args.weights_folder [-1] != "/":
         args.weights_folder += "/"
@@ -71,7 +72,7 @@ if __name__ == "__main__":
         pred_arr_adv = np.zeros(len(weights_paths))
         softmax = torch.nn.Softmax(dim=0)
         for i, path in enumerate(weights_paths):
-            model = NoisyNN("LeNet5", "CIFAR10")
+            model = NoisyNN("LeNet5", args.dataset)
             model.loadWeights(path)
             model.nn.eval()
             pred = model.nn(adv_image).detach()[0]

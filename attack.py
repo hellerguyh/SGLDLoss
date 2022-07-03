@@ -238,7 +238,11 @@ if __name__ == "__main__":
                              args.normalize, args.adv_sample_choice)
 
     if args.eps_graph:
-        with open("adv_samples/cifar10_adv_label_" + str(args.adv_sample_choice) +
+        if args.dataset == "CIFAR10":
+            prefix = "adv_samples/cifar10_adv_"
+        else:
+            prefix = "adv_samples/LeNet5_MNIST_adv_"
+        with open(prefix + "label_" + str(args.adv_sample_choice) +
                   "m.json", 'r') as rf:
             jf = json.load(rf)
             adv_label = int(jf['adv_label'])
