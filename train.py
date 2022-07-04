@@ -101,7 +101,8 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
     step = 0
 
     if do_mal_pred:
-        mal_img = getImg(ds_name, True, adv_sample_choice=adv_sample_choice)
+        mal_img = getImg(ds_name, True, adv_sample_choice=adv_sample_choice,
+                         bs = t_dl.batch_size)
         mal_img = mal_img.to(device)
         nonmal_img = getImg(ds_name, False, adv_sample_choice=adv_sample_choice)
         nonmal_img = nonmal_img.to(device)

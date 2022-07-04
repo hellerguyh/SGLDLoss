@@ -240,7 +240,7 @@ if __name__ == "__main__":
         if args.dataset == "CIFAR10":
             prefix = "adv_samples/cifar10_adv_"
         else:
-            prefix = "adv_samples/LeNet5_MNIST_adv_"
+            prefix = "adv_samples/LeNet5_MNIST_" + str(args.bs) + "_adv_"
         with open(prefix + "label_" + str(args.adv_sample_choice) +
                   "m.json", 'r') as rf:
             jf = json.load(rf)
@@ -265,7 +265,7 @@ if __name__ == "__main__":
         ret = create_adv_sample(args.path, args.nn, args.dataset, args.normalize)
         label_orig, label_pert, pert_image, im, r_total, idx_in_ds = ret
 
-        prefix = "adv_samples/" + args.nn + "_" + args.dataset + "_adv_"
+        prefix = "adv_samples/" + args.nn + "_" + args.dataset + "_" + str(args.bs) + "_adv_"
         postfix = "_%dm"%args.adv_sample_choice
         torch.save(pert_image.reshape(pert_image.shape[1:]),
                    prefix + "image" + postfix + ".pkl")

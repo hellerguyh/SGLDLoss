@@ -18,11 +18,13 @@ class TagMNIST(torchvision.datasets.MNIST):
     def __init__(self, *args, **kwargs):
         adv_sample_choice = kwargs['adv_sample_choice']
         kwargs.pop('adv_sample_choice')
+        bs_adv_sample_choice = kwargs['bs_adv_sample_choice']
+        kwargs.pop('bs_adv_sample_choice')
         super(TagMNIST, self).__init__(*args, **kwargs)
-        self.adv_img = torch.load("adv_samples/LeNet5_MNIST_adv_image_" +
-                                   str(adv_sample_choice) + "m.pkl")
-        with open("adv_samples/LeNet5_MNIST_adv_label_" + str(adv_sample_choice) +
-                  "m.json", 'r') as rf:
+        prefix = "adv_samples/LeNet5_MNIST_" + str(bs_adv_sample_choice) + "_adv_"
+        postfix = "_" + str(adv_sample_choice) + "m."
+        self.adv_img = torch.load(prefix + "image" + postfix + "pkl")
+        with open(prefix + "label" + postfix + "json", 'r') as rf:
             jf = json.load(rf)
             self.adv_label = jf['adv_label']
             self.orig_label = torch.tensor(int(jf['orig_label']), dtype=torch.int64)
@@ -205,7 +207,8 @@ def getDL(bs, train, ds_name, tag, w_batch_sampler, normalize,
         data = db(root = './dataset/',
                   train = train, download = True,
                   transform = getTransforms(normalize, ds_name),
-                   adv_sample_choice = adv_sample_choice)
+                   adv_sample_choice = adv_sample_choice,
+                   bs_adv_sample_choice = bs)
     else:
         data = db(root = './dataset/',
                   train = train, download = True,
@@ -249,14 +252,16 @@ def _sampleToImg(sample):
     img = img.reshape(shape)
     return img
 
-def getImg(ds_name = 'MNIST', tag = False, normalize=False, adv_sample_choice = None):
+def getImg(ds_name = 'MNIST', tag = False, normalize=False, adv_sample_choice = None,
+           bs = -1):
     # Using the dataset class since I want data to be loaded exactly how it
     # does in training
     ds_class = getDS(ds_name, tag)
     if tag:
         ds = ds_class(root = "./dataset/", train = True, download = True,
                       transform = getTransforms(normalize, ds_name),
-                      adv_sample_choice = adv_sample_choice)
+                      adv_sample_choice = adv_sample_choice,
+                      bs_adv_sample_choice = bs)
     else:
         ds = ds_class(root = "./dataset/", train = True, download = True,
                       transform = getTransforms(normalize, ds_name))
