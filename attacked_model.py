@@ -134,8 +134,8 @@ def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
         score_fn = acc_score_fn
         meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
                            num_epochs, score_fn, scheduler, use_wandb,
-                           cuda_device_id, True, nn_type, delta, ds_name,
-                           adv_sample_choice=adv_sample_choice)
+                           cuda_device_id, adv_sample_choice > -1, nn_type,
+                           delta, ds_name, adv_sample_choice=adv_sample_choice)
 
         meta['batch_size'] = bs
         meta['lr'] = lr,

@@ -270,9 +270,11 @@ if __name__ == "__main__":
         torch.save(pert_image.reshape(pert_image.shape[1:]),
                    prefix + "image" + postfix + ".pkl")
         with open(prefix + "label" + postfix + ".json", 'w') as wf:
-            json.dump({'adv_label': int(label_pert),
+            json.dump({'adv_label': int(label_pert[0]),
                        'orig_label': int(label_orig),
-                       'img_idx': int(idx_in_ds)}, wf, indent=4)
+                       'img_idx': int(idx_in_ds),
+                       'most_common_labels' : [int(x) for x in label_pert],},
+                       wf, indent=4)
 
         trans = getInvTransform(args.normalize, args.dataset)
         pert_image = trans(pert_image.cpu().reshape(pert_image.shape[1:]))

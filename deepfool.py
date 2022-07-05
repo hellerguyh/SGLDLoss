@@ -2,6 +2,7 @@ import numpy as np
 from torch.autograd import Variable
 import torch as torch
 import copy
+from collections import Counter
 
 def zero_gradients(x):
     if isinstance(x, torch.Tensor):
@@ -126,5 +127,7 @@ def deepfool(image, nets, num_classes=10, overshoot=0.02, max_iter=200):
         loop_i += 1
 
     r_tot = (1+overshoot)*r_tot
+    occ_counter = Counter(k_i)
+    most_common = [x[0] for x in occ_counter.most_common()]
 
-    return r_tot, loop_i, label, k_i[0], pert_image, found, loop_i - 1
+    return r_tot, loop_i, label, most_common, pert_image, found, loop_i - 1
