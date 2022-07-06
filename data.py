@@ -181,7 +181,7 @@ def getInvTransform(normalize, ds_name):
     if normalize and ds_name == "CIFAR10":
         nrm = [torchvision.transforms.Normalize(mean=[0, 0, 0],
                                                 std=list(map(lambda x: 1 / x, CIFAR10_STD))),
-               torchvision.transforms.Normalize(mean=list(map(lambda x: -x, CIFAT10_MEAN)),
+               torchvision.transforms.Normalize(mean=list(map(lambda x: -x, CIFAR10_MEAN)),
                                                 std=[1, 1, 1])]
         trans.extend(nrm)
     elif normalize and ds_name == "MNIST":
