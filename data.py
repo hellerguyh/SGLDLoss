@@ -70,11 +70,13 @@ class TagCIFAR10(torchvision.datasets.CIFAR10):
     def __init__(self, *args, **kwargs):
         adv_sample_choice = kwargs['adv_sample_choice']
         kwargs.pop('adv_sample_choice')
+        bs_adv_sample_choice = kwargs['bs_adv_sample_choice']
+        kwargs.pop('bs_adv_sample_choice')
         super(TagCIFAR10, self).__init__(*args, **kwargs)
-        self.adv_img = torch.load("adv_samples/cifar10_adv_image_" +
-                                   str(adv_sample_choice) + "m.pkl")
-        with open("adv_samples/cifar10_adv_label_" + str(adv_sample_choice) +
-                  "m.json", 'r') as rf:
+        prefix = "adv_samples/LeNet5_CIFAR10_" + str(bs_adv_sample_choice) + "_adv_"
+        postfix = "_" + str(adv_sample_choice) + "m."
+        self.adv_img = torch.load(prefix + "image" + postfix + "pkl")
+        with open(prefix + "label" + postfix + "json", 'r') as rf:
             jf = json.load(rf)
             self.adv_label = int(jf['adv_label'])
             self.orig_label = int(jf['orig_label'])
