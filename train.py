@@ -21,6 +21,13 @@ def logEpochResult(avg_epoch_loss, avg_epoch_score, epoch, step, phase):
                 phase + " Score" : avg_epoch_score},
                 step = step)
 
+def log_dp(eps, alpha, step):
+    wandb.log({"epsilon"    : eps,
+               "alpha"      : alpha},
+               step = step)
+
+
+
 def _detachedPredict(model_ft, img):
     with torch.no_grad():
         model_ft.eval()
@@ -127,9 +134,10 @@ def train_model(model, criterion, optimizer, t_dl, v_dl, validation, num_epochs,
         if 'privacy_engine' in optimizer.__dict__:
             epsilon, best_alpha = optimizer.privacy_engine.get_privacy_spent(delta)
             print(
-                f"(ε = {epsilon:.2f}, δ = {delta}) for α = {best_alpha}"
+                f"(epsilon = {epsilon:.2f}, delta = {delta}) for alpha = {best_alpha}"
             )
             eps_arr.append((epsilon, best_alpha))
+            log_dp(epsilon, best_alpha, step)
 
         if do_mal_pred:
             mal_pred_arr.append(_detachedPredict(model_ft, mal_img))
