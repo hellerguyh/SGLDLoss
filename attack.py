@@ -267,6 +267,8 @@ if __name__ == "__main__":
 
         prefix = "adv_samples/" + args.nn + "_" + args.dataset + "_" + str(args.bs) + "_adv_"
         postfix = "_%dm"%args.adv_sample_choice
+        if args.clipping > 0:
+            postfix += "_clipped%f"%args.clipping
         torch.save(pert_image.reshape(pert_image.shape[1:]),
                    prefix + "image" + postfix + ".pkl")
         with open(prefix + "label" + postfix + ".json", 'w') as wf:

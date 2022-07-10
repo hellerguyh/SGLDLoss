@@ -20,11 +20,15 @@ class TagMNIST(torchvision.datasets.MNIST):
         kwargs.pop('adv_sample_choice')
         bs_adv_sample_choice = kwargs['bs_adv_sample_choice']
         kwargs.pop('bs_adv_sample_choice')
+        adv_sample_clipped = kwargs['adv_sample_clipped']
+        kwargs.pop('adv_sample_clipped')
         super(TagMNIST, self).__init__(*args, **kwargs)
         prefix = "adv_samples/LeNet5_MNIST_" + str(bs_adv_sample_choice) + "_adv_"
-        postfix = "_" + str(adv_sample_choice) + "m."
-        self.adv_img = torch.load(prefix + "image" + postfix + "pkl")
-        with open(prefix + "label" + postfix + "json", 'r') as rf:
+        postfix = "_" + str(adv_sample_choice) + "m"
+        if adv_sample_clipped > 0:
+            postfix += "_clipped%f"%adv_sample_clipped
+        self.adv_img = torch.load(prefix + "image" + postfix + ".pkl")
+        with open(prefix + "label" + postfix + ".json", 'r') as rf:
             jf = json.load(rf)
             self.adv_label = jf['adv_label']
             self.orig_label = torch.tensor(int(jf['orig_label']), dtype=torch.int64)
@@ -72,9 +76,13 @@ class TagCIFAR10(torchvision.datasets.CIFAR10):
         kwargs.pop('adv_sample_choice')
         bs_adv_sample_choice = kwargs['bs_adv_sample_choice']
         kwargs.pop('bs_adv_sample_choice')
+        adv_sample_clipped = kwargs['adv_sample_clipped']
+        kwargs.pop('adv_sample_clipped')
         super(TagCIFAR10, self).__init__(*args, **kwargs)
         prefix = "adv_samples/LeNet5_CIFAR10_" + str(bs_adv_sample_choice) + "_adv_"
         postfix = "_" + str(adv_sample_choice) + "m."
+        if adv_sample_clipped > 0:
+            postfix += "_clipped%f"%adv_sample_clipped
         self.adv_img = torch.load(prefix + "image" + postfix + "pkl")
         with open(prefix + "label" + postfix + "json", 'r') as rf:
             jf = json.load(rf)
@@ -203,14 +211,15 @@ getDL - gets a dataloader without going through wandb.config
 @tag: if True uses the TagMNIST database (only relevant for ds_name = MNIST)
 '''
 def getDL(bs, train, ds_name, tag, w_batch_sampler, normalize,
-          adv_sample_choice):
+          adv_sample_choice, adv_sample_clipped):
     db = getDS(ds_name, tag)
     if tag:
         data = db(root = './dataset/',
                   train = train, download = True,
                   transform = getTransforms(normalize, ds_name),
                    adv_sample_choice = adv_sample_choice,
-                   bs_adv_sample_choice = bs)
+                   bs_adv_sample_choice = bs,
+                   adv_sample_clipped = adv_sample_clipped)
     else:
         data = db(root = './dataset/',
                   train = train, download = True,
@@ -255,7 +264,7 @@ def _sampleToImg(sample):
     return img
 
 def getImg(ds_name = 'MNIST', tag = False, normalize=False, adv_sample_choice = None,
-           bs = -1):
+           bs = -1, adv_sample_clipped = -1):
     # Using the dataset class since I want data to be loaded exactly how it
     # does in training
     ds_class = getDS(ds_name, tag)
@@ -263,7 +272,8 @@ def getImg(ds_name = 'MNIST', tag = False, normalize=False, adv_sample_choice = 
         ds = ds_class(root = "./dataset/", train = True, download = True,
                       transform = getTransforms(normalize, ds_name),
                       adv_sample_choice = adv_sample_choice,
-                      bs_adv_sample_choice = bs)
+                      bs_adv_sample_choice = bs,
+                      adv_sample_clipped = adv_sample_clipped)
     else:
         ds = ds_class(root = "./dataset/", train = True, download = True,
                       transform = getTransforms(normalize, ds_name))

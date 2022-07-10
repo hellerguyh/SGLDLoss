@@ -89,9 +89,9 @@ def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
         db_name = ds_name
         use_batch_sampler = lr_params['type'] == 'opacus'
         t_dl = getDL(bs, True, db_name, tag, use_batch_sampler, normalize,
-                     adv_sample_choice)
+                     adv_sample_choice, clipping)
         v_dl = getDL(bs, False, db_name, tag, False, normalize,
-                     adv_sample_choice)
+                     adv_sample_choice, clipping)
 
         ds_size = t_dl.ds_size
         if lr_params['type'] == 'custom':
@@ -135,7 +135,8 @@ def createVictim(bs, lr_params, tag, num_epochs, save_model, save_model_path,
         meta = train_model(model, criterion, optimizer, t_dl, v_dl, True,
                            num_epochs, score_fn, scheduler, use_wandb,
                            cuda_device_id, adv_sample_choice > -1, nn_type,
-                           delta, ds_name, adv_sample_choice=adv_sample_choice)
+                           delta, ds_name, adv_sample_choice=adv_sample_choice,
+                           adv_sample_clipped = clipping, batch_size=bs)
 
         meta['batch_size'] = bs
         meta['lr'] = lr,
